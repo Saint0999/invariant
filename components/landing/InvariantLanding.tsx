@@ -5,9 +5,10 @@
  * ---------------------------------------------------------------------------
  * Landing page for a crypto-to-crypto / crypto-to-fiat converter platform.
  *
- * LIGHT THEME — the page sits on a near-white canvas (#FCFCFC) with a solid
- * near-black headline (#111111). The 3D scene is a full-bleed background layer
- * behind centered content, masked so it never competes with the type.
+ * DARK THEME — a near-black #0A0A0C surface lifted by a few very low-opacity
+ * violet/cyan glows so it never reads as flat black. Type is white through
+ * white/60. The 3D centrepiece is a full-bleed background layer behind centred
+ * content, with a dark scrim keeping the headline legible over it.
  *
  * NEXT.JS (App Router) INTEGRATION
  * ---------------------------------------------------------------------------
@@ -20,18 +21,19 @@
  *    import InvariantLanding from "@/components/landing/InvariantLanding";
  *    export default function Page() { return <InvariantLanding />; }
  *
- * 4. Give <body> a light background so there is no dark flash before hydration:
- *    <body className="bg-[#FCFCFC]">
+ * 4. Give <body> the same base colour so there is no white flash before
+ *    hydration and overscroll matches:
+ *    <body className="bg-[#0A0A0C]">
  *
- * NOTE ON THE HEADER
+ * CHAIN LOGOS
  * ---------------------------------------------------------------------------
- * The navbar's structure, blur, hairline sheen, hover sweep and mobile drawer
- * are unchanged from the dark version. Only its colour tokens were inverted —
- * the original `bg-white/[0.04]` + `border-white/10` + white text is invisible
- * against a white page. Search "LIGHT-INVERTED" to find every changed token.
+ * The supported-networks row reads SVGs from /public (/eth.svg, /sol.svg,
+ * /base.svg, /arb.svg, /matic.svg). Placeholder files ship with this commit —
+ * overwrite them with the real brand marks. See DEFAULT_NETWORKS.
  */
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useState, type FC, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -55,8 +57,15 @@ export interface NavLink {
   href: string;
 }
 
+export interface SupportedNetwork {
+  /** Chain name shown in the hero's supported-networks row. */
+  label: string;
+  /** Path to the chain's logo under /public, e.g. "/eth.svg". */
+  logo: string;
+}
+
 export interface InvariantLandingProps {
-  /** Product name rendered in the navbar and hero eyebrow. */
+  /** Product name rendered in the navbar and footer. */
   brand?: string;
   /** Center navigation links. */
   navLinks?: NavLink[];
@@ -64,18 +73,30 @@ export interface InvariantLandingProps {
   launchHref?: string;
   /** Label for the primary navbar button. */
   launchLabel?: string;
-  /** Networks listed in the hero trust strip. */
-  networks?: string[];
+  /** Chains listed in the hero's supported-networks row. */
+  networks?: SupportedNetwork[];
 }
 
 const DEFAULT_NAV: NavLink[] = [
   { label: "Features", href: "#features" },
-  { label: "Supported Currencies", href: "#currencies" },
+  { label: "Currencies", href: "#currencies" },
   { label: "Security", href: "#security" },
   { label: "Docs", href: "#docs" },
 ];
 
-const DEFAULT_NETWORKS = ["Ethereum", "Solana", "Base", "Arbitrum", "Polygon"];
+/**
+ * Chain marks are loaded from /public. The files shipped alongside this
+ * component are neutral placeholders so the row renders instead of showing
+ * broken images — drop your real brand SVGs over them at the same paths and
+ * nothing here needs to change.
+ */
+const DEFAULT_NETWORKS: SupportedNetwork[] = [
+  { label: "Ethereum", logo: "/eth.svg" },
+  { label: "Solana", logo: "/sol.svg" },
+  { label: "Base", logo: "/base.svg" },
+  { label: "Arbitrum", logo: "/arb.svg" },
+  { label: "Polygon", logo: "/matic.svg" },
+];
 
 /* ==========================================================================
  * 3D scene — code-split, client-only
@@ -89,7 +110,7 @@ const HeroScene = dynamic(() => import("./HeroScene"), {
 /** CSS-only stand-in so the hero never reflows when the WebGL bundle lands. */
 const SceneFallback: FC = () => (
   <div className="absolute inset-0 grid place-items-center" aria-hidden>
-    <div className="h-[32rem] w-[32rem] animate-pulse rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.06),transparent_70%)] blur-2xl" />
+    <div className="h-[38rem] w-[38rem] animate-pulse rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.20),rgba(6,182,212,0.08)_45%,transparent_72%)] blur-3xl" />
   </div>
 );
 
@@ -103,16 +124,19 @@ interface GlassProps {
 }
 
 /**
- * The glassmorphism surface. Identical construction to the dark version —
- * translucent fill, backdrop blur, hairline top highlight, soft outer shadow —
- * with LIGHT-INVERTED tokens: white fill over a black hairline border, and a
- * white (rather than white-on-dark) top sheen.
+ * The frosted glass surface, dark-mode variant: a 30%-opacity black fill over
+ * `backdrop-blur-md`, so the 3D centrepiece behind it blurs through rather
+ * than being blocked out.
+ *
+ * Deliberately only these three properties plus the shadow. Earlier revisions
+ * stacked an inner ring and a heavy border on the same fill, and together
+ * those read as a solid bar — which is the bug that keeps recurring. Keep this
+ * minimal.
  */
 const GlassPanel: FC<GlassProps> = ({ className = "", children }) => (
   <div
     className={
-      "relative rounded-3xl border border-black/[0.07] bg-white/70 shadow-[0_8px_40px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl " +
-      "before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent " +
+      "relative rounded-3xl border-b border-white/10 bg-black/30 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md " +
       className
     }
   >
@@ -141,16 +165,12 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
           <nav className="flex items-center justify-between gap-6" aria-label="Main">
             {/* ---- Brand ------------------------------------------------- */}
             <a href="/" className="group flex items-center gap-3">
-              {/* LIGHT-INVERTED: solid near-black mark instead of the gradient tile. */}
-              <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-[#111111]">
+              <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-white/10 ring-1 ring-inset ring-white/20">
                 <ArrowUpDown className="h-4 w-4 text-white" strokeWidth={2.75} />
               </span>
               <span className="flex flex-col leading-none">
-                {/* LIGHT-INVERTED: text-white -> text-[#111111] */}
-                <span className="text-[15px] font-semibold tracking-tight text-[#111111]">
-                  {brand}
-                </span>
-                <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.18em] text-neutral-400 sm:block">
+                <span className="text-[15px] font-semibold tracking-tight text-white">{brand}</span>
+                <span className="mt-2 hidden text-[10px] uppercase tracking-[0.18em] text-white/40 sm:block">
                   Convert · Bridge · Cash out
                 </span>
               </span>
@@ -160,12 +180,11 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
             <ul className="hidden items-center gap-1 lg:flex">
               {links.map((link) => (
                 <li key={link.href}>
-                  {/* LIGHT-INVERTED: text-white/65 -> text-neutral-500 */}
                   <a
                     href={link.href}
-                    className="relative rounded-full px-4 py-2 text-sm text-neutral-500 transition-colors duration-200 hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20"
+                    className="relative rounded-full px-4 py-2 text-sm text-white/60 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                   >
-                    <span className="absolute inset-0 rounded-full transition-colors duration-200 hover:bg-black/[0.04]" />
+                    <span className="absolute inset-0 rounded-full transition-colors duration-200 hover:bg-white/[0.06]" />
                     <span className="relative">{link.label}</span>
                   </a>
                 </li>
@@ -176,17 +195,16 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
             <div className="flex items-center gap-2">
               <a
                 href="/login"
-                className="hidden rounded-full px-4 py-2 text-sm text-neutral-500 transition-colors hover:text-[#111111] sm:block"
+                className="hidden rounded-full px-4 py-2 text-sm text-white/60 transition-colors hover:text-white sm:block"
               >
                 Log in
               </a>
 
-              {/* LIGHT-INVERTED: white pill -> near-black pill, sheen now white. */}
               <a
                 href={launchHref}
-                className="group relative inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full bg-[#111111] px-4 py-2.5 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30 sm:px-5"
+                className="group relative inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#0A0A0C] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:px-5"
               >
-                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 <span className="relative sm:hidden">Launch</span>
                 <span className="relative hidden sm:inline">{launchLabel}</span>
                 <ArrowRight className="relative h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -197,7 +215,7 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
                 aria-label={open ? "Close navigation" : "Open navigation"}
-                className="grid h-10 w-10 place-items-center rounded-full border border-black/[0.08] bg-black/[0.02] text-neutral-700 lg:hidden"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/[0.06] text-white/80 lg:hidden"
               >
                 {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </button>
@@ -206,13 +224,13 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
 
           {/* ---- Mobile drawer ------------------------------------------- */}
           {open && (
-            <ul className="mt-3 grid gap-1 border-t border-black/[0.07] pt-3 lg:hidden">
+            <ul className="mt-3 grid gap-1 border-t border-white/10 pt-3 lg:hidden">
               {links.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
                     onClick={() => setOpen(false)}
-                    className="block rounded-xl px-4 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-black/[0.04] hover:text-[#111111]"
+                    className="block rounded-xl px-4 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white"
                   >
                     {link.label}
                   </a>
@@ -231,12 +249,11 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
  * ========================================================================== */
 
 interface HeroProps {
-  brand: string;
   launchHref: string;
-  networks: string[];
+  networks: SupportedNetwork[];
 }
 
-const Hero: FC<HeroProps> = ({ brand, launchHref, networks }) => (
+const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
   <section className="relative isolate grid min-h-screen place-items-center overflow-hidden px-4">
     {/* ---- Layer 1: the 3D background --------------------------------- */}
     <div className="absolute inset-0 -z-20" aria-hidden>
@@ -244,72 +261,76 @@ const Hero: FC<HeroProps> = ({ brand, launchHref, networks }) => (
     </div>
 
     {/*
-      ---- Layer 2: legibility mask ------------------------------------
-      The scene renders full-bleed, so a soft white wash is painted over its
-      middle. The centre is fully opaque white where the headline sits and
-      falls off to transparent at the edges, which keeps the geometry visible
-      as a halo around the type instead of behind it. This is the single
-      element doing the "don't make the text unreadable" work — tune the
-      middle stop (currently 38%) to reveal more or less of the model.
+      ---- Layer 2: legibility scrim ------------------------------------
+      A dark wash rather than the light theme's white one — it has to match the
+      page base, or it reads as a grey disc floating over the background.
+      Kept fairly transparent so the glass centrepiece still shows through:
+      dark type-on-glass needs far less masking than the light theme did,
+      because white text over a dark scrim is already high contrast.
+
+      Sized in viewport PERCENTAGES, so the desktop ellipse would collapse to
+      ~110px across on a 390px phone — hence the separate mobile-first value.
     */}
     <div
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,#FCFCFC_0%,#FCFCFC_38%,rgba(252,252,252,0.72)_60%,rgba(252,252,252,0)_100%)]"
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_38%_at_50%_50%,rgba(10,10,12,0.88)_0%,rgba(10,10,12,0.72)_45%,rgba(10,10,12,0.3)_76%,rgba(10,10,12,0)_100%)] sm:bg-[radial-gradient(ellipse_52%_38%_at_50%_48%,rgba(10,10,12,0.82)_0%,rgba(10,10,12,0.66)_45%,rgba(10,10,12,0.25)_76%,rgba(10,10,12,0)_100%)]"
       aria-hidden
     />
 
     {/* ---- Layer 3: content -------------------------------------------- */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      {/* App-icon style mark, echoing the reference's centred badge. */}
-      <span className="mb-10 grid h-20 w-20 place-items-center rounded-[1.35rem] bg-[#111111] shadow-[0_18px_40px_-16px_rgba(15,23,42,0.5)]">
-        <ArrowUpDown className="h-8 w-8 text-white" strokeWidth={2.5} />
-      </span>
-
-      <h1 className="text-balance text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-[#111111] sm:text-6xl lg:text-7xl">
+      <h1 className="text-balance text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-white sm:text-6xl lg:text-7xl">
         Turn any token into spendable money.
       </h1>
 
-      <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-neutral-500 sm:text-lg">
-        Cross-chain swaps and crypto-to-fiat payouts on one route — 24 chains, 51 countries.
-        Rates locked before you sign.
+      <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/55 sm:text-lg">
+        Cross-chain swaps and crypto-to-fiat payouts on one route. Rates locked before you
+        sign. Invariant routes liquidity across 24 chains and 51 countries.
       </p>
 
       {/* ---- CTAs ---------------------------------------------------- */}
       <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
         <a
           href={launchHref}
-          className="inline-flex items-center rounded-full bg-[#111111] px-7 py-3.5 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30"
+          className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#0A0A0C] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           Convert now
         </a>
 
         <a
           href="#rates"
-          className="group inline-flex items-center gap-2 rounded-full border border-black/[0.12] bg-white px-7 py-3.5 text-sm font-semibold text-[#111111] transition-colors hover:bg-neutral-50"
+          className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/[0.1]"
         >
           See live rates
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </a>
       </div>
 
-      {/* ---- Trust strip ---------------------------------------------- */}
-      <div className="mt-20">
-        <p className="text-xs font-medium text-neutral-400">
-          {brand} routes liquidity across
-        </p>
-        <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
-          {networks.map((network) => (
-            <li
-              key={network}
-              // neutral-300 matched the reference's ghosted logo row but sits
-              // near 1.6:1 against white; neutral-400 keeps the muted look
-              // while staying legible as actual text.
-              className="text-sm font-semibold tracking-tight text-neutral-400 transition-colors hover:text-neutral-600"
-            >
-              {network}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* ---- Supported networks --------------------------------------- */}
+      <ul className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+        {networks.map(({ label, logo }) => (
+          <li key={label}>
+            <span className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white/50 transition-colors hover:text-white/80">
+              {/*
+                `unoptimized` is deliberate. Next's image optimizer refuses SVGs
+                unless you set `images.dangerouslyAllowSVG` in next.config —
+                bypassing it keeps these working with zero config. Swap to a
+                plain <img> if you'd rather not use next/image at all.
+                Decorative: the visible label already names the chain, so alt
+                is empty rather than duplicating it for screen readers.
+              */}
+              <Image
+                src={logo}
+                alt=""
+                width={20}
+                height={20}
+                unoptimized
+                className="h-5 w-5 object-contain opacity-80"
+              />
+              {label}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   </section>
 );
@@ -350,11 +371,11 @@ const FEATURES: Feature[] = [
 const FeatureGrid: FC = () => (
   <section id="features" className="relative mx-auto w-[min(1200px,calc(100%-2rem))] py-28">
     <div className="mx-auto max-w-2xl text-center">
-      <span className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-white px-3.5 py-1.5 text-xs font-medium tracking-wide text-neutral-500">
-        <BadgeCheck className="h-3.5 w-3.5 text-neutral-400" />
+      <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-3.5 py-1.5 text-xs font-medium tracking-wide text-white/60 backdrop-blur-sm">
+        <BadgeCheck className="h-3.5 w-3.5 text-white/50" />
         Why it converts
       </span>
-      <h2 className="mt-5 text-balance text-4xl font-bold tracking-[-0.03em] text-[#111111] sm:text-5xl">
+      <h2 className="mt-5 text-balance text-4xl font-bold tracking-[-0.03em] text-white sm:text-5xl">
         Built for the moment you actually need the money.
       </h2>
     </div>
@@ -363,13 +384,13 @@ const FeatureGrid: FC = () => (
       {FEATURES.map(({ title, body, icon: Icon }) => (
         <div
           key={title}
-          className="rounded-3xl border border-black/[0.07] bg-white p-7 transition-shadow duration-300 hover:shadow-[0_12px_40px_-18px_rgba(15,23,42,0.25)]"
+          className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-7 backdrop-blur-sm transition-colors duration-300 hover:border-white/20 hover:bg-white/[0.06]"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100 text-neutral-700">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/[0.08] text-white/80 ring-1 ring-inset ring-white/10">
             <Icon className="h-5 w-5" />
           </span>
-          <h3 className="mt-5 text-lg font-semibold tracking-tight text-[#111111]">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-500">{body}</p>
+          <h3 className="mt-5 text-lg font-semibold tracking-tight text-white">{title}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-white/50">{body}</p>
         </div>
       ))}
     </div>
@@ -381,27 +402,31 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
   launchLabel,
 }) => (
   <section id="docs" className="mx-auto mb-28 w-[min(1200px,calc(100%-2rem))]">
-    <div className="rounded-[2rem] border border-black/[0.07] bg-neutral-50 px-8 py-20 text-center sm:px-16">
-      <h2 className="text-balance text-4xl font-bold tracking-[-0.03em] text-[#111111] sm:text-5xl">
+    <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-white/[0.03] px-8 py-20 text-center backdrop-blur-sm sm:px-16">
+      <div
+        className="pointer-events-none absolute left-1/2 top-0 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.28),transparent_70%)] blur-3xl"
+        aria-hidden
+      />
+      <h2 className="relative text-balance text-4xl font-bold tracking-[-0.03em] text-white sm:text-5xl">
         Your first conversion takes under a minute.
       </h2>
-      <p className="mx-auto mt-4 max-w-lg text-neutral-500">
+      <p className="relative mx-auto mt-4 max-w-lg text-white/55">
         Connect a wallet, pick a payout account, and watch the quote settle. No signup wall,
         no minimums.
       </p>
-      <div className="mt-9 flex flex-wrap justify-center gap-3">
+      <div className="relative mt-9 flex flex-wrap justify-center gap-3">
         <a
           href={launchHref}
-          className="inline-flex items-center gap-2 rounded-full bg-[#111111] px-7 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
+          className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#0A0A0C] transition-transform hover:scale-[1.03]"
         >
           {launchLabel}
           <ArrowRight className="h-4 w-4" />
         </a>
         <a
           href="/docs"
-          className="inline-flex items-center gap-2 rounded-full border border-black/[0.12] bg-white px-7 py-3.5 text-sm font-semibold text-[#111111] transition-colors hover:bg-neutral-50"
+          className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
         >
-          <BookOpen className="h-4 w-4 text-neutral-400" />
+          <BookOpen className="h-4 w-4 text-white/60" />
           Read the docs
         </a>
       </div>
@@ -420,33 +445,47 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
   launchLabel = "Launch Converter",
   networks = DEFAULT_NETWORKS,
 }) => (
-  <div className="relative min-h-screen bg-[#FCFCFC] font-sans antialiased selection:bg-neutral-900 selection:text-white">
-    <Navbar brand={brand} links={navLinks} launchHref={launchHref} launchLabel={launchLabel} />
+  <div className="relative min-h-screen bg-[#0A0A0C] font-sans antialiased selection:bg-white selection:text-[#0A0A0C]">
+    {/*
+      Muted ambient glows so the page never reads as flat black. Very low
+      opacity and heavily blurred — at higher values these stop being
+      atmosphere and start looking like coloured blobs. `fixed` keeps them
+      anchored to the viewport across the whole scroll.
+    */}
+    <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
+      <div className="absolute left-1/2 top-[-10rem] h-[40rem] w-[70rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.10),transparent_70%)] blur-3xl" />
+      <div className="absolute -left-40 top-1/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07),transparent_70%)] blur-3xl" />
+      <div className="absolute -right-40 top-2/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,0.07),transparent_70%)] blur-3xl" />
+    </div>
 
-    <main>
-      <Hero brand={brand} launchHref={launchHref} networks={networks} />
-      <FeatureGrid />
-      <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
-    </main>
+    <div className="relative z-10">
+      <Navbar brand={brand} links={navLinks} launchHref={launchHref} launchLabel={launchLabel} />
 
-    <footer id="security" className="border-t border-black/[0.07] py-10">
-      <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-4 text-sm text-neutral-400 sm:flex-row">
-        <span>
-          © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
-        </span>
-        <div className="flex gap-6">
-          <a href="/terms" className="transition-colors hover:text-neutral-700">
-            Terms
-          </a>
-          <a href="/privacy" className="transition-colors hover:text-neutral-700">
-            Privacy
-          </a>
-          <a href="/status" className="transition-colors hover:text-neutral-700">
-            Status
-          </a>
+      <main>
+        <Hero launchHref={launchHref} networks={networks} />
+        <FeatureGrid />
+        <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
+      </main>
+
+      <footer id="security" className="border-t border-white/[0.08] py-10">
+        <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-4 text-sm text-white/40 sm:flex-row">
+          <span>
+            © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
+          </span>
+          <div className="flex gap-6">
+            <a href="/terms" className="transition-colors hover:text-white/70">
+              Terms
+            </a>
+            <a href="/privacy" className="transition-colors hover:text-white/70">
+              Privacy
+            </a>
+            <a href="/status" className="transition-colors hover:text-white/70">
+              Status
+            </a>
+          </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
   </div>
 );
 
