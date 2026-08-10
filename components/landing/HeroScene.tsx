@@ -3,150 +3,133 @@
 /**
  * HeroScene.tsx
  * ---------------------------------------------------------------------------
- * A single abstract "node sphere" sitting BEHIND the centred hero content.
+ * A ring of polished metal coins orbiting the centre of the hero, sitting
+ * BEHIND the centred text. The ring is deliberately hollow in the middle so
+ * the headline lands in the gap rather than on top of the geometry.
  *
  * This lives in its own module so `next/dynamic` with `ssr: false` has a real
  * import boundary to code-split against — the ~450 KB three.js bundle never
  * blocks the hero's text paint. Imported only from InvariantLanding.tsx.
  *
- * COMPOSITION
+ * TWO ROTATIONS
  * ---------------------------------------------------------------------------
- * Three coaxial layers rotating as one body:
- *   1. a faceted icosahedral core in glossy iridescent violet
- *   2. a larger wireframe shell, reading as the network graph
- *   3. emissive node spheres pinned to the shell's vertices
+ * The whole ring revolves around Y, and every coin independently spins on its
+ * own cylinder axis so faces sweep through the light and flash. Those axes are
+ * different, which is why coins are nested two groups deep — see Coin below.
  *
- * LIGHTING AGAINST WHITE
+ * ENVIRONMENT DEPENDENCY (important)
  * ---------------------------------------------------------------------------
- * Making geometry read on a light page is the inverse of the dark-theme
- * problem. Chrome works on black because it is lit by its highlights; on white
- * those highlights ARE the background, so a metallic surface disappears. The
- * fix is pigment, not polish: low-metalness meshPhysicalMaterial in saturated
- * colour, with `clearcoat` doing the glossy work metalness used to. The
- * environment is under-driven (envMapIntensity below 1) because a near-white
- * env washes saturated colour straight back out to pastel.
+ * `metalness={1}` means these surfaces have NO diffuse response: their entire
+ * appearance is the reflected environment. <Environment preset="city" /> loads
+ * that HDRI from drei's CDN at runtime, so if the request is blocked (offline,
+ * strict CSP, locked-down network) the coins render black or disappear
+ * completely. A local, zero-network fallback rig is included below, commented
+ * out — swap to it if you hit that.
  */
 
 import { useMemo, useRef, useState, type FC } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Icosahedron, Lightformer } from "@react-three/drei";
-import { IcosahedronGeometry, type Group } from "three";
-
-/** Position triple, matching three's constructor order. */
-type Vec3 = [x: number, y: number, z: number];
+import { Environment } from "@react-three/drei";
+import type { Group, Mesh } from "three";
 
 /* ------------------------------------------------------------------------ */
-/* Geometry constants                                                        */
+/* Scene constants                                                           */
 /* ------------------------------------------------------------------------ */
 
-/** Radius of the solid inner core. */
-const CORE_RADIUS = 1.15;
-/** Radius of the wireframe shell and the node ring that sits on it. */
-const SHELL_RADIUS = 1.72;
-/**
- * Subdivision level for both shell and nodes. 1 gives 42 vertices — enough to
- * read as a network, few enough that the node spheres stay individually
- * legible. 2 would give 162 and turn into visual noise at this scale.
- */
-const SHELL_DETAIL = 1;
+/** Every coin shares this exact colour — no per-coin tinting. */
+const COIN_COLOR = "#DFAE58";
+/** How many coins sit in the orbit. */
+const COIN_COUNT = 18;
+/** Orbit radius, in world units. Large enough to leave the centre clear. */
+const RING_RADIUS = 4.4;
+/** Uniform coin scale. The geometry itself stays at the specified args. */
+const COIN_SCALE = 0.24;
+
+interface CoinConfig {
+  /** Angle around the ring, radians. */
+  angle: number;
+  /** Vertical offset, so the ring reads as a scattered band not a flat disc. */
+  y: number;
+  /** Push in/out of the orbit for depth variation. */
+  radiusOffset: number;
+  /** Static lean, so coins present at different angles to the camera. */
+  tilt: number;
+  /** Per-coin spin rate, radians/sec. */
+  spin: number;
+}
 
 /* ------------------------------------------------------------------------ */
-/* Node sphere                                                               */
+/* A single coin                                                             */
 /* ------------------------------------------------------------------------ */
 
-const NodeSphere: FC = () => {
-  const group = useRef<Group>(null);
+const Coin: FC<{ config: CoinConfig }> = ({ config }) => {
+  const spinRef = useRef<Mesh>(null);
+
+  // Spin about the cylinder's own axis. This is why the mesh is nested inside
+  // the tilted group rather than carrying the tilt itself: cylinderGeometry is
+  // built along local Y, so rotating THIS mesh's Y spins the coin like a record
+  // regardless of how the parent has leaned it. Baking tilt and spin into one
+  // Euler would make the spin axis drift with the tilt.
+  useFrame((_state, delta) => {
+    if (spinRef.current) spinRef.current.rotation.y += delta * config.spin;
+  });
+
+  const radius = RING_RADIUS + config.radiusOffset;
+
+  return (
+    <group
+      position={[Math.cos(config.angle) * radius, config.y, Math.sin(config.angle) * radius]}
+    >
+      {/* Stand the coin up to face the camera, then lean it by `tilt`. */}
+      <group rotation={[Math.PI / 2, 0, config.tilt]}>
+        <mesh ref={spinRef} scale={COIN_SCALE}>
+          <cylinderGeometry args={[1, 1, 0.1, 32]} />
+          <meshStandardMaterial color={COIN_COLOR} metalness={1} roughness={0.1} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+/* ------------------------------------------------------------------------ */
+/* The orbiting ring                                                         */
+/* ------------------------------------------------------------------------ */
+
+const CoinRing: FC = () => {
+  const ring = useRef<Group>(null);
 
   /**
-   * The wireframe's vertex positions, de-duplicated. IcosahedronGeometry is
-   * non-indexed, so every vertex is repeated once per adjacent face — pinning
-   * a mesh to each raw entry would stack five spheres on the same point and
-   * pay for all of them. Rounding to 3dp is what makes the dedupe reliable:
-   * shared vertices differ in the last float bits.
+   * Deterministic pseudo-random layout. Seeded arithmetic rather than
+   * Math.random() so the arrangement is stable across re-renders — with
+   * Math.random() every React re-render would reshuffle the whole ring.
    */
-  const nodes = useMemo<Vec3[]>(() => {
-    const geometry = new IcosahedronGeometry(SHELL_RADIUS, SHELL_DETAIL);
-    const position = geometry.attributes.position;
-    const seen = new Set<string>();
-    const points: Vec3[] = [];
+  const coins = useMemo<CoinConfig[]>(
+    () =>
+      Array.from({ length: COIN_COUNT }, (_, i) => {
+        const angle = (i / COIN_COUNT) * Math.PI * 2;
+        // Cheap irrational-multiplier hash — spreads values without clustering.
+        const jitter = (n: number) => (Math.sin(i * n) + 1) / 2;
 
-    for (let i = 0; i < position.count; i += 1) {
-      const x = Number(position.getX(i).toFixed(3));
-      const y = Number(position.getY(i).toFixed(3));
-      const z = Number(position.getZ(i).toFixed(3));
-      const key = `${x}|${y}|${z}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      points.push([x, y, z]);
-    }
+        return {
+          angle,
+          y: (jitter(12.9898) - 0.5) * 4.2,
+          radiusOffset: (jitter(78.233) - 0.5) * 1.6,
+          tilt: jitter(43.758) * Math.PI,
+          spin: 0.25 + jitter(93.989) * 0.5,
+        };
+      }),
+    [],
+  );
 
-    // The geometry existed only to harvest positions; free its GPU buffers.
-    geometry.dispose();
-    return points;
-  }, []);
-
-  // Slow, continuous, two-axis drift. Deliberately not tied to scroll or
-  // pointer so the object reads as a calm ambient presence.
+  // Slow revolution of the entire orbit.
   useFrame((_state, delta) => {
-    if (!group.current) return;
-    group.current.rotation.y += delta * 0.12;
-    group.current.rotation.x += delta * 0.045;
+    if (ring.current) ring.current.rotation.y += delta * 0.14;
   });
 
   return (
-    <group ref={group}>
-      {/* ---- 1. Faceted core ---------------------------------------- */}
-      <Icosahedron args={[CORE_RADIUS, 0]}>
-        <meshPhysicalMaterial
-          color="#6d28d9"
-          metalness={0.2}
-          roughness={0.06}
-          clearcoat={1}
-          clearcoatRoughness={0.04}
-          // Kept low: at full strength the thin-film term dominates the base
-          // pigment and the object washes out to pastel against white.
-          iridescence={0.4}
-          iridescenceIOR={1.6}
-          iridescenceThicknessRange={[200, 700]}
-          // Below 1 on purpose — the environment is near-white, so letting it
-          // drive the shading desaturates the pigment.
-          envMapIntensity={0.75}
-          flatShading
-        />
-      </Icosahedron>
-
-      {/* ---- 2. Wireframe shell ------------------------------------- */}
-      <Icosahedron args={[SHELL_RADIUS, SHELL_DETAIL]}>
-        {/*
-          meshBasicMaterial, not standard: the wire should be a constant-weight
-          graphic line, not a lit surface that fades out wherever it happens to
-          face away from the key light.
-        */}
-        <meshBasicMaterial
-          color="#8b5cf6"
-          wireframe
-          transparent
-          opacity={0.42}
-          // Without depthWrite:false the wire occludes the core's highlights
-          // and the whole object flattens.
-          depthWrite={false}
-        />
-      </Icosahedron>
-
-      {/* ---- 3. Emissive nodes -------------------------------------- */}
-      {nodes.map((position, i) => (
-        <mesh key={`${position[0]}|${position[1]}|${position[2]}`} position={position}>
-          <sphereGeometry args={[0.05, 16, 16]} />
-          {/* Alternating accents keep the ring from reading as one flat dotted
-              outline. Emissive is what makes them glow against the light page. */}
-          <meshStandardMaterial
-            color={i % 3 === 0 ? "#06b6d4" : "#7c3aed"}
-            emissive={i % 3 === 0 ? "#06b6d4" : "#7c3aed"}
-            emissiveIntensity={i % 3 === 0 ? 1.6 : 1.1}
-            roughness={0.25}
-            toneMapped={false}
-          />
-        </mesh>
+    <group ref={ring}>
+      {coins.map((config, i) => (
+        <Coin key={i} config={config} />
       ))}
     </group>
   );
@@ -157,18 +140,14 @@ const NodeSphere: FC = () => {
 /* ------------------------------------------------------------------------ */
 
 const Rig: FC = () => {
-  // The scene is authored for a desktop-width frame. On a phone the same world
-  // units fill a much narrower viewport, so the sphere swells up and collides
-  // with the headline — shrink it and lift it clear instead.
+  // The ring is authored for a desktop-width frame. On a phone the same world
+  // units fill a much narrower viewport, so it crowds the headline — pull the
+  // whole orbit down in scale instead.
   const isNarrow = useThree((state) => state.size.width) < 768;
 
   return (
-    // On a phone the sphere is both shrunk and lifted well above centre: at
-    // desktop proportions it lands squarely on the headline, and the legibility
-    // mask is far smaller in absolute pixels at 390px wide so it cannot
-    // compensate on its own.
-    <group scale={isNarrow ? 0.5 : 1} position={[0, isNarrow ? 1.55 : 0.35, 0]}>
-      <NodeSphere />
+    <group scale={isNarrow ? 0.72 : 1} rotation={[0.18, 0, 0]}>
+      <CoinRing />
     </group>
   );
 };
@@ -193,13 +172,13 @@ const HeroScene: FC = () => {
       {/* Always-present ambient wash. Doubles as the loading state and as the
           fallback whenever the canvas cannot paint. */}
       <div className="absolute inset-0 grid place-items-center" aria-hidden>
-        <div className="h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(109,40,217,0.07),transparent_70%)] blur-3xl" />
+        <div className="h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(180,140,70,0.10),transparent_70%)] blur-3xl" />
       </div>
 
       <Canvas
         className="absolute inset-0"
         style={{ opacity: contextLost ? 0 : 1, transition: "opacity 300ms" }}
-        camera={{ position: [0, 0, 7.5], fov: 45 }}
+        camera={{ position: [0, 0, 9.5], fov: 45 }}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
@@ -212,42 +191,36 @@ const HeroScene: FC = () => {
           canvas.addEventListener("webglcontextrestored", () => setContextLost(false));
         }}
       >
-        {/* Ambient is low because the surfaces are pigmented: flooding a
-            saturated material with white ambient desaturates it. The
-            directionals do the shaping. */}
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[4, 6, 4]} intensity={2.2} color="#ffffff" />
-        <directionalLight position={[-5, -2, 2]} intensity={1.1} color="#a5b4fc" />
+        {/* Direct lights only sharpen the specular hits; at metalness 1 the
+            Environment below is what actually renders these surfaces. */}
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[5, 6, 4]} intensity={1.6} color="#fff6e2" />
+        <directionalLight position={[-5, -2, 3]} intensity={0.8} color="#cfd8e6" />
 
         <Rig />
 
         {/*
-          Reflections come from an in-scene Lightformer rig, not a drei
-          `preset` — presets fetch an HDRI from a CDN at runtime, which leaves
-          the canvas blank when the request fails and breaks under a strict CSP.
+          Loads the "city" HDRI from drei's CDN at runtime
+          (raw.githack.com -> raw.githubusercontent.com). See the note at the
+          top of this file: at metalness 1 these coins have no appearance
+          except this reflection, so if the request is blocked they render as
+          near-invisible pale discs.
 
-          `frames={1}` bakes the cubemap once at mount; the lightformers are
-          static, so leaving it at the default would redraw the entire
-          environment cubemap every animation frame.
+          Zero-network replacement — swap the line below for this block, and
+          add `Lightformer` to the drei import above:
+
+            <Environment resolution={256} frames={1}>
+              <color attach="background" args={["#f0ece4"]} />
+              <Lightformer intensity={2} position={[0, 5, -2]} scale={[10, 4, 1]} color="#fff3dc" />
+              <Lightformer intensity={1.6} position={[-5, 1, 1]} rotation={[0, Math.PI / 2, 0]} scale={[8, 2, 1]} color="#ffffff" />
+              <Lightformer intensity={1.2} position={[5, -1, 1]} rotation={[0, -Math.PI / 2, 0]} scale={[8, 2, 1]} color="#e8d9bd" />
+            </Environment>
+
+          Note that a flat white studio rig like that one reflects as flat
+          white, so the coins stay pale. Real contrast needs dark stops in the
+          environment — which is what the city HDRI provides.
         */}
-        <Environment resolution={256} frames={1}>
-          <color attach="background" args={["#e9edf3"]} />
-          <Lightformer intensity={1.4} position={[0, 5, -2]} scale={[10, 4, 1]} color="#ffffff" />
-          <Lightformer
-            intensity={1.1}
-            position={[-5, 1, 1]}
-            rotation={[0, Math.PI / 2, 0]}
-            scale={[8, 2, 1]}
-            color="#dfe7f5"
-          />
-          <Lightformer
-            intensity={0.9}
-            position={[5, -1, 1]}
-            rotation={[0, -Math.PI / 2, 0]}
-            scale={[8, 2, 1]}
-            color="#c3cddd"
-          />
-        </Environment>
+        <Environment preset="city" />
       </Canvas>
     </div>
   );

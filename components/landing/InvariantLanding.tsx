@@ -132,17 +132,18 @@ interface GlassProps {
 }
 
 /**
- * The glassmorphism surface: a frosted, highly transparent white fill over a
- * `backdrop-blur-md`, so the colourful 3D geometry behind it blurs through
- * instead of being hidden. The inner white ring plus the hairline top sheen
- * are what give the edge its "lit glass" read; without them a translucent
- * panel just looks like flat, faded white.
+ * The frosted glass surface: a 40%-opacity white fill over `backdrop-blur-md`,
+ * so whatever passes behind it blurs through rather than being blocked out.
+ *
+ * The previous version stacked an inner `ring-white/50` and a `border-white/60`
+ * on top of the same fill — together those read as an almost-solid white edge
+ * and made the whole bar look opaque, which is the bug this replaces. Only the
+ * subtle bottom border remains.
  */
 const GlassPanel: FC<GlassProps> = ({ className = "", children }) => (
   <div
     className={
-      "relative rounded-3xl border border-white/60 bg-white/40 shadow-[0_8px_32px_-12px_rgba(15,23,42,0.15)] ring-1 ring-inset ring-white/50 backdrop-blur-md backdrop-saturate-150 " +
-      "before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent " +
+      "relative rounded-3xl border-b border-white/20 bg-white/40 shadow-[0_8px_32px_-12px_rgba(15,23,42,0.15)] backdrop-blur-md backdrop-saturate-150 " +
       className
     }
   >
@@ -283,10 +284,10 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       element doing the "don't make the text unreadable" work — tune the
       middle stop (currently 30%) to reveal more or less of the model.
 
-      The opaque core is tighter and the falloff gentler than the first pass,
-      because the geometry is now saturated rather than near-white: it needs
-      less masking to stay off the type, and over-masking would flatten the
-      colour back out to the white it is meant to break up.
+      This is much lighter than earlier revisions because the coin ring is
+      hollow: the headline already lands in the gap at the centre of the orbit,
+      so the wash only has to soften the few coins that swing across the type
+      rather than blanket the whole middle of the screen.
 
       The wash is pure white to match the page gradient's centre stop — a
       near-white like #FCFCFC would read as a visible grey disc sitting on top
@@ -297,7 +298,7 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       // ellipse shrinks to ~105px across on a 390px phone and stops covering
       // the headline at all. The mobile-first value is a much wider, flatter
       // ellipse tuned to the stacked mobile text block.
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_92%_34%_at_50%_50%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.9)_42%,rgba(255,255,255,0.5)_74%,rgba(255,255,255,0)_100%)] sm:bg-[radial-gradient(ellipse_54%_42%_at_50%_46%,rgba(255,255,255,0.94)_0%,rgba(255,255,255,0.88)_38%,rgba(255,255,255,0.45)_70%,rgba(255,255,255,0)_100%)]"
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_92%_34%_at_50%_50%,rgba(255,255,255,0.9)_0%,rgba(255,255,255,0.8)_45%,rgba(255,255,255,0.35)_76%,rgba(255,255,255,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_34%_at_50%_48%,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.66)_45%,rgba(255,255,255,0.22)_76%,rgba(255,255,255,0)_100%)]"
       aria-hidden
     />
 
@@ -467,13 +468,13 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
   networks = DEFAULT_NETWORKS,
 }) => (
   /*
-   * The page surface: pure white at the optical centre, falling off through
-   * two silver stops to #E2E5EA at the corners. `bg-fixed` anchors the
-   * gradient to the viewport rather than the (much taller) document, so the
-   * falloff stays a lighting effect instead of stretching over the full scroll
-   * height and washing out to flat grey.
+   * The page surface: a radial silver-to-white gradient — white at the centre
+   * through gray-100 to gray-300 at the edges, reading as a soft brushed-metal
+   * sheet. `bg-fixed` anchors it to the viewport rather than the (much taller)
+   * document, so the falloff stays a lighting effect instead of stretching
+   * over the full scroll height and flattening to grey.
    */
-  <div className="relative min-h-screen bg-[radial-gradient(115%_100%_at_50%_26%,#FFFFFF_0%,#F8F9FB_30%,#EAECF1_62%,#D8DCE3_100%)] bg-fixed font-sans antialiased selection:bg-neutral-900 selection:text-white">
+  <div className="relative min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-gray-100 to-gray-300 bg-fixed font-sans antialiased selection:bg-neutral-900 selection:text-white">
     <Navbar brand={brand} links={navLinks} launchHref={launchHref} launchLabel={launchLabel} />
 
     <main>
