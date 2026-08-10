@@ -5,9 +5,11 @@
  * ---------------------------------------------------------------------------
  * Landing page for a crypto-to-crypto / crypto-to-fiat converter platform.
  *
- * LIGHT THEME — the page sits on a near-white canvas (#FCFCFC) with a solid
- * near-black headline (#111111). The 3D scene is a full-bleed background layer
- * behind centered content, masked so it never competes with the type.
+ * LIGHT THEME — the page sits on a soft radial gradient that is pure white at
+ * the centre and falls off to a silver-grey at the edges, giving the surface
+ * physical depth. Headline is a solid near-black (#111111). The 3D scene is a
+ * full-bleed background layer behind centred content, masked so it never
+ * competes with the type.
  *
  * NEXT.JS (App Router) INTEGRATION
  * ---------------------------------------------------------------------------
@@ -20,8 +22,15 @@
  *    import InvariantLanding from "@/components/landing/InvariantLanding";
  *    export default function Page() { return <InvariantLanding />; }
  *
- * 4. Give <body> a light background so there is no dark flash before hydration:
- *    <body className="bg-[#FCFCFC]">
+ * 4. Give <body> the gradient's EDGE colour, not its centre, so overscroll and
+ *    the area below the fold match instead of flashing white:
+ *    <body className="bg-[#E4E7EC]">
+ *
+ * CHAIN LOGOS
+ * ---------------------------------------------------------------------------
+ * The supported-networks row reads SVGs from /public (/eth.svg, /sol.svg,
+ * /base.svg, /arb.svg, /matic.svg). Placeholder files ship with this commit —
+ * overwrite them with the real brand marks. See DEFAULT_NETWORKS.
  *
  * NOTE ON THE HEADER
  * ---------------------------------------------------------------------------
@@ -32,6 +41,7 @@
  */
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useState, type FC, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -55,8 +65,15 @@ export interface NavLink {
   href: string;
 }
 
+export interface SupportedNetwork {
+  /** Chain name shown in the hero's supported-networks row. */
+  label: string;
+  /** Path to the chain's logo under /public, e.g. "/eth.svg". */
+  logo: string;
+}
+
 export interface InvariantLandingProps {
-  /** Product name rendered in the navbar and hero eyebrow. */
+  /** Product name rendered in the navbar and footer. */
   brand?: string;
   /** Center navigation links. */
   navLinks?: NavLink[];
@@ -64,18 +81,30 @@ export interface InvariantLandingProps {
   launchHref?: string;
   /** Label for the primary navbar button. */
   launchLabel?: string;
-  /** Networks listed in the hero trust strip. */
-  networks?: string[];
+  /** Chains listed in the hero's supported-networks row. */
+  networks?: SupportedNetwork[];
 }
 
 const DEFAULT_NAV: NavLink[] = [
   { label: "Features", href: "#features" },
-  { label: "Supported Currencies", href: "#currencies" },
+  { label: "Currencies", href: "#currencies" },
   { label: "Security", href: "#security" },
   { label: "Docs", href: "#docs" },
 ];
 
-const DEFAULT_NETWORKS = ["Ethereum", "Solana", "Base", "Arbitrum", "Polygon"];
+/**
+ * Chain marks are loaded from /public. The files shipped alongside this
+ * component are neutral placeholders so the row renders instead of showing
+ * broken images — drop your real brand SVGs over them at the same paths and
+ * nothing here needs to change.
+ */
+const DEFAULT_NETWORKS: SupportedNetwork[] = [
+  { label: "Ethereum", logo: "/eth.svg" },
+  { label: "Solana", logo: "/sol.svg" },
+  { label: "Base", logo: "/base.svg" },
+  { label: "Arbitrum", logo: "/arb.svg" },
+  { label: "Polygon", logo: "/matic.svg" },
+];
 
 /* ==========================================================================
  * 3D scene — code-split, client-only
@@ -103,15 +132,16 @@ interface GlassProps {
 }
 
 /**
- * The glassmorphism surface. Identical construction to the dark version —
- * translucent fill, backdrop blur, hairline top highlight, soft outer shadow —
- * with LIGHT-INVERTED tokens: white fill over a black hairline border, and a
- * white (rather than white-on-dark) top sheen.
+ * The glassmorphism surface: a frosted, highly transparent white fill over a
+ * `backdrop-blur-md`, so the colourful 3D geometry behind it blurs through
+ * instead of being hidden. The inner white ring plus the hairline top sheen
+ * are what give the edge its "lit glass" read; without them a translucent
+ * panel just looks like flat, faded white.
  */
 const GlassPanel: FC<GlassProps> = ({ className = "", children }) => (
   <div
     className={
-      "relative rounded-3xl border border-black/[0.07] bg-white/70 shadow-[0_8px_40px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl " +
+      "relative rounded-3xl border border-white/60 bg-white/40 shadow-[0_8px_32px_-12px_rgba(15,23,42,0.15)] ring-1 ring-inset ring-white/50 backdrop-blur-md backdrop-saturate-150 " +
       "before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent " +
       className
     }
@@ -145,12 +175,14 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
               <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-[#111111]">
                 <ArrowUpDown className="h-4 w-4 text-white" strokeWidth={2.75} />
               </span>
+              {/* leading-none on the wrapper was what made these two lines feel
+                  cramped; the gap now comes from an explicit mt on the tagline. */}
               <span className="flex flex-col leading-none">
                 {/* LIGHT-INVERTED: text-white -> text-[#111111] */}
                 <span className="text-[15px] font-semibold tracking-tight text-[#111111]">
                   {brand}
                 </span>
-                <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.18em] text-neutral-400 sm:block">
+                <span className="mt-2 hidden text-[10px] uppercase tracking-[0.18em] text-neutral-500 sm:block">
                   Convert · Bridge · Cash out
                 </span>
               </span>
@@ -231,12 +263,11 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
  * ========================================================================== */
 
 interface HeroProps {
-  brand: string;
   launchHref: string;
-  networks: string[];
+  networks: SupportedNetwork[];
 }
 
-const Hero: FC<HeroProps> = ({ brand, launchHref, networks }) => (
+const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
   <section className="relative isolate grid min-h-screen place-items-center overflow-hidden px-4">
     {/* ---- Layer 1: the 3D background --------------------------------- */}
     <div className="absolute inset-0 -z-20" aria-hidden>
@@ -250,27 +281,35 @@ const Hero: FC<HeroProps> = ({ brand, launchHref, networks }) => (
       falls off to transparent at the edges, which keeps the geometry visible
       as a halo around the type instead of behind it. This is the single
       element doing the "don't make the text unreadable" work — tune the
-      middle stop (currently 38%) to reveal more or less of the model.
+      middle stop (currently 30%) to reveal more or less of the model.
+
+      The opaque core is tighter and the falloff gentler than the first pass,
+      because the geometry is now saturated rather than near-white: it needs
+      less masking to stay off the type, and over-masking would flatten the
+      colour back out to the white it is meant to break up.
+
+      The wash is pure white to match the page gradient's centre stop — a
+      near-white like #FCFCFC would read as a visible grey disc sitting on top
+      of the gradient.
     */}
     <div
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,#FCFCFC_0%,#FCFCFC_38%,rgba(252,252,252,0.72)_60%,rgba(252,252,252,0)_100%)]"
+      // The mask is sized in PERCENTAGES of the viewport, so the desktop
+      // ellipse shrinks to ~105px across on a 390px phone and stops covering
+      // the headline at all. The mobile-first value is a much wider, flatter
+      // ellipse tuned to the stacked mobile text block.
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_92%_34%_at_50%_50%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.9)_42%,rgba(255,255,255,0.5)_74%,rgba(255,255,255,0)_100%)] sm:bg-[radial-gradient(ellipse_54%_42%_at_50%_46%,rgba(255,255,255,0.94)_0%,rgba(255,255,255,0.88)_38%,rgba(255,255,255,0.45)_70%,rgba(255,255,255,0)_100%)]"
       aria-hidden
     />
 
     {/* ---- Layer 3: content -------------------------------------------- */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      {/* App-icon style mark, echoing the reference's centred badge. */}
-      <span className="mb-10 grid h-20 w-20 place-items-center rounded-[1.35rem] bg-[#111111] shadow-[0_18px_40px_-16px_rgba(15,23,42,0.5)]">
-        <ArrowUpDown className="h-8 w-8 text-white" strokeWidth={2.5} />
-      </span>
-
       <h1 className="text-balance text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-[#111111] sm:text-6xl lg:text-7xl">
         Turn any token into spendable money.
       </h1>
 
-      <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-neutral-500 sm:text-lg">
-        Cross-chain swaps and crypto-to-fiat payouts on one route — 24 chains, 51 countries.
-        Rates locked before you sign.
+      <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-neutral-500 sm:text-lg">
+        Cross-chain swaps and crypto-to-fiat payouts on one route. Rates locked before you
+        sign. Invariant routes liquidity across 24 chains and 51 countries.
       </p>
 
       {/* ---- CTAs ---------------------------------------------------- */}
@@ -291,25 +330,32 @@ const Hero: FC<HeroProps> = ({ brand, launchHref, networks }) => (
         </a>
       </div>
 
-      {/* ---- Trust strip ---------------------------------------------- */}
-      <div className="mt-20">
-        <p className="text-xs font-medium text-neutral-400">
-          {brand} routes liquidity across
-        </p>
-        <ul className="mt-5 flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
-          {networks.map((network) => (
-            <li
-              key={network}
-              // neutral-300 matched the reference's ghosted logo row but sits
-              // near 1.6:1 against white; neutral-400 keeps the muted look
-              // while staying legible as actual text.
-              className="text-sm font-semibold tracking-tight text-neutral-400 transition-colors hover:text-neutral-600"
-            >
-              {network}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* ---- Supported networks --------------------------------------- */}
+      <ul className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+        {networks.map(({ label, logo }) => (
+          <li key={label}>
+            <span className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-tight text-neutral-500 transition-colors hover:text-neutral-800">
+              {/*
+                `unoptimized` is deliberate. Next's image optimizer refuses SVGs
+                unless you set `images.dangerouslyAllowSVG` in next.config —
+                bypassing it keeps these working with zero config. Swap to a
+                plain <img> if you'd rather not use next/image at all.
+                Decorative: the visible label already names the chain, so alt
+                is empty rather than duplicating it for screen readers.
+              */}
+              <Image
+                src={logo}
+                alt=""
+                width={20}
+                height={20}
+                unoptimized
+                className="h-5 w-5 object-contain"
+              />
+              {label}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   </section>
 );
@@ -420,11 +466,18 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
   launchLabel = "Launch Converter",
   networks = DEFAULT_NETWORKS,
 }) => (
-  <div className="relative min-h-screen bg-[#FCFCFC] font-sans antialiased selection:bg-neutral-900 selection:text-white">
+  /*
+   * The page surface: pure white at the optical centre, falling off through
+   * two silver stops to #E2E5EA at the corners. `bg-fixed` anchors the
+   * gradient to the viewport rather than the (much taller) document, so the
+   * falloff stays a lighting effect instead of stretching over the full scroll
+   * height and washing out to flat grey.
+   */
+  <div className="relative min-h-screen bg-[radial-gradient(115%_100%_at_50%_26%,#FFFFFF_0%,#F8F9FB_30%,#EAECF1_62%,#D8DCE3_100%)] bg-fixed font-sans antialiased selection:bg-neutral-900 selection:text-white">
     <Navbar brand={brand} links={navLinks} launchHref={launchHref} launchLabel={launchLabel} />
 
     <main>
-      <Hero brand={brand} launchHref={launchHref} networks={networks} />
+      <Hero launchHref={launchHref} networks={networks} />
       <FeatureGrid />
       <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
     </main>

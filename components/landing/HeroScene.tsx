@@ -3,158 +3,179 @@
 /**
  * HeroScene.tsx
  * ---------------------------------------------------------------------------
- * The react-three-fiber scene that sits BEHIND the centred hero content.
+ * A single abstract "node sphere" sitting BEHIND the centred hero content.
  *
  * This lives in its own module so `next/dynamic` with `ssr: false` has a real
  * import boundary to code-split against — the ~450 KB three.js bundle never
  * blocks the hero's text paint. Imported only from InvariantLanding.tsx.
  *
- * LIGHT-THEME NOTES
+ * COMPOSITION
  * ---------------------------------------------------------------------------
- * Lighting a metal against white is the inverse of the dark version's problem.
- * On a dark page a chrome object reads through its bright highlights; on white
- * it reads through its *shadows*, so the environment is deliberately not blown
- * out — the lightformers are dimmed and the materials carry a cool grey tint
- * so the geometry stays visible against #FCFCFC without turning muddy.
+ * Three coaxial layers rotating as one body:
+ *   1. a faceted icosahedral core in glossy iridescent violet
+ *   2. a larger wireframe shell, reading as the network graph
+ *   3. emissive node spheres pinned to the shell's vertices
  *
- * The composition is a wide ring of objects rather than one centred hero prop:
- * the headline occupies the middle of the screen, so the geometry is pushed
- * outward and the page paints a radial white mask over the centre (see the
- * "legibility mask" layer in InvariantLanding.tsx).
+ * LIGHTING AGAINST WHITE
+ * ---------------------------------------------------------------------------
+ * Making geometry read on a light page is the inverse of the dark-theme
+ * problem. Chrome works on black because it is lit by its highlights; on white
+ * those highlights ARE the background, so a metallic surface disappears. The
+ * fix is pigment, not polish: low-metalness meshPhysicalMaterial in saturated
+ * colour, with `clearcoat` doing the glossy work metalness used to. The
+ * environment is under-driven (envMapIntensity below 1) because a near-white
+ * env washes saturated colour straight back out to pastel.
  */
 
-import { useRef, useState, type FC } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, Float, Lightformer, TorusKnot } from "@react-three/drei";
-import type { Group, Mesh } from "three";
+import { useMemo, useRef, useState, type FC } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Environment, Icosahedron, Lightformer } from "@react-three/drei";
+import { IcosahedronGeometry, type Group } from "three";
 
-/** Position / Euler triple, matching three's constructor order. */
+/** Position triple, matching three's constructor order. */
 type Vec3 = [x: number, y: number, z: number];
 
 /* ------------------------------------------------------------------------ */
-/* Focal object                                                              */
+/* Geometry constants                                                        */
 /* ------------------------------------------------------------------------ */
 
-interface KnotProps {
-  /** Radians per second around Y. */
-  speed?: number;
-}
-
-const GlowKnot: FC<KnotProps> = ({ speed = 0.16 }) => {
-  const ref = useRef<Mesh>(null);
-
-  useFrame((_state, delta) => {
-    if (!ref.current) return;
-    ref.current.rotation.y += delta * speed;
-    ref.current.rotation.x += delta * speed * 0.35;
-  });
-
-  return (
-    <Float speed={1.1} rotationIntensity={0.35} floatIntensity={0.8}>
-      {/* args: radius, tube, tubularSegments, radialSegments, p, q */}
-      {/* Small and lifted above centre: the headline owns the middle of the
-          screen, so the knot reads as an accent behind the app-icon badge
-          rather than a backdrop the type has to fight. */}
-      <TorusKnot ref={ref} args={[1.05, 0.3, 220, 36, 2, 3]} scale={0.62} position={[0, 1.5, -1]}>
-        <meshStandardMaterial
-          // Cool light grey rather than a saturated colour — on white, tint is
-          // what separates the object from the page, and anything stronger
-          // reads as the neon look this redesign is moving away from.
-          color="#c9d2e0"
-          metalness={0.85}
-          roughness={0.2}
-          // Well below the dark theme's 2.2: a blown-out env map washes the
-          // object into the white background and it disappears entirely.
-          envMapIntensity={1.1}
-        />
-      </TorusKnot>
-    </Float>
-  );
-};
+/** Radius of the solid inner core. */
+const CORE_RADIUS = 1.15;
+/** Radius of the wireframe shell and the node ring that sits on it. */
+const SHELL_RADIUS = 1.72;
+/**
+ * Subdivision level for both shell and nodes. 1 gives 42 vertices — enough to
+ * read as a network, few enough that the node spheres stay individually
+ * legible. 2 would give 162 and turn into visual noise at this scale.
+ */
+const SHELL_DETAIL = 1;
 
 /* ------------------------------------------------------------------------ */
-/* Orbiting coins                                                            */
+/* Node sphere                                                               */
 /* ------------------------------------------------------------------------ */
 
-interface CoinProps {
-  position: Vec3;
-  rotation?: Vec3;
-  /** Base tint of the coin's metal. */
-  color?: string;
-  /** Float cadence — vary per instance so the coins never sync up. */
-  floatSpeed?: number;
-  scale?: number;
-}
-
-const Coin: FC<CoinProps> = ({
-  position,
-  rotation = [Math.PI / 2.4, 0, 0.3],
-  color = "#d8dee9",
-  floatSpeed = 1.6,
-  scale = 1,
-}) => {
-  const ref = useRef<Mesh>(null);
-
-  useFrame((_state, delta) => {
-    if (ref.current) ref.current.rotation.z += delta * 0.5;
-  });
-
-  return (
-    <Float speed={floatSpeed} rotationIntensity={0.7} floatIntensity={1.3}>
-      <mesh ref={ref} position={position} rotation={rotation} scale={scale}>
-        {/* args: radiusTop, radiusBottom, height, radialSegments */}
-        <cylinderGeometry args={[0.62, 0.62, 0.1, 64]} />
-        <meshStandardMaterial
-          color={color}
-          metalness={0.8}
-          roughness={0.25}
-          envMapIntensity={1.1}
-        />
-      </mesh>
-    </Float>
-  );
-};
-
-/* ------------------------------------------------------------------------ */
-/* Scene graph                                                               */
-/* ------------------------------------------------------------------------ */
-
-const Rig: FC = () => {
+const NodeSphere: FC = () => {
   const group = useRef<Group>(null);
 
-  // Gentle parallax that tracks the pointer — enough to read as interactive
-  // without hijacking scroll or destabilising the centred type.
-  useFrame((state, delta) => {
+  /**
+   * The wireframe's vertex positions, de-duplicated. IcosahedronGeometry is
+   * non-indexed, so every vertex is repeated once per adjacent face — pinning
+   * a mesh to each raw entry would stack five spheres on the same point and
+   * pay for all of them. Rounding to 3dp is what makes the dedupe reliable:
+   * shared vertices differ in the last float bits.
+   */
+  const nodes = useMemo<Vec3[]>(() => {
+    const geometry = new IcosahedronGeometry(SHELL_RADIUS, SHELL_DETAIL);
+    const position = geometry.attributes.position;
+    const seen = new Set<string>();
+    const points: Vec3[] = [];
+
+    for (let i = 0; i < position.count; i += 1) {
+      const x = Number(position.getX(i).toFixed(3));
+      const y = Number(position.getY(i).toFixed(3));
+      const z = Number(position.getZ(i).toFixed(3));
+      const key = `${x}|${y}|${z}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      points.push([x, y, z]);
+    }
+
+    // The geometry existed only to harvest positions; free its GPU buffers.
+    geometry.dispose();
+    return points;
+  }, []);
+
+  // Slow, continuous, two-axis drift. Deliberately not tied to scroll or
+  // pointer so the object reads as a calm ambient presence.
+  useFrame((_state, delta) => {
     if (!group.current) return;
-    const targetX = state.pointer.x * 0.22;
-    const targetY = state.pointer.y * 0.14;
-    group.current.rotation.y += (targetX - group.current.rotation.y) * delta * 2;
-    group.current.rotation.x += (-targetY - group.current.rotation.x) * delta * 2;
+    group.current.rotation.y += delta * 0.12;
+    group.current.rotation.x += delta * 0.045;
   });
 
   return (
     <group ref={group}>
-      <GlowKnot />
-      {/* Coins pushed well outboard and kept small so they frame the headline
-          from the margins instead of sitting under it. */}
-      <Coin position={[3.9, -1.1, -1]} color="#dfe5ee" floatSpeed={1.5} scale={0.5} />
-      <Coin
-        position={[-3.7, 0.7, -1.5]}
-        color="#d3dae6"
-        floatSpeed={2.1}
-        scale={0.42}
-        rotation={[Math.PI / 3, 0.4, -0.2]}
-      />
-      <Coin
-        position={[-2.8, -2.1, -2]}
-        color="#e4e9f1"
-        floatSpeed={1.8}
-        scale={0.3}
-        rotation={[Math.PI / 2.8, -0.3, 0.5]}
-      />
+      {/* ---- 1. Faceted core ---------------------------------------- */}
+      <Icosahedron args={[CORE_RADIUS, 0]}>
+        <meshPhysicalMaterial
+          color="#6d28d9"
+          metalness={0.2}
+          roughness={0.06}
+          clearcoat={1}
+          clearcoatRoughness={0.04}
+          // Kept low: at full strength the thin-film term dominates the base
+          // pigment and the object washes out to pastel against white.
+          iridescence={0.4}
+          iridescenceIOR={1.6}
+          iridescenceThicknessRange={[200, 700]}
+          // Below 1 on purpose — the environment is near-white, so letting it
+          // drive the shading desaturates the pigment.
+          envMapIntensity={0.75}
+          flatShading
+        />
+      </Icosahedron>
+
+      {/* ---- 2. Wireframe shell ------------------------------------- */}
+      <Icosahedron args={[SHELL_RADIUS, SHELL_DETAIL]}>
+        {/*
+          meshBasicMaterial, not standard: the wire should be a constant-weight
+          graphic line, not a lit surface that fades out wherever it happens to
+          face away from the key light.
+        */}
+        <meshBasicMaterial
+          color="#8b5cf6"
+          wireframe
+          transparent
+          opacity={0.42}
+          // Without depthWrite:false the wire occludes the core's highlights
+          // and the whole object flattens.
+          depthWrite={false}
+        />
+      </Icosahedron>
+
+      {/* ---- 3. Emissive nodes -------------------------------------- */}
+      {nodes.map((position, i) => (
+        <mesh key={`${position[0]}|${position[1]}|${position[2]}`} position={position}>
+          <sphereGeometry args={[0.05, 16, 16]} />
+          {/* Alternating accents keep the ring from reading as one flat dotted
+              outline. Emissive is what makes them glow against the light page. */}
+          <meshStandardMaterial
+            color={i % 3 === 0 ? "#06b6d4" : "#7c3aed"}
+            emissive={i % 3 === 0 ? "#06b6d4" : "#7c3aed"}
+            emissiveIntensity={i % 3 === 0 ? 1.6 : 1.1}
+            roughness={0.25}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
     </group>
   );
 };
+
+/* ------------------------------------------------------------------------ */
+/* Rig                                                                       */
+/* ------------------------------------------------------------------------ */
+
+const Rig: FC = () => {
+  // The scene is authored for a desktop-width frame. On a phone the same world
+  // units fill a much narrower viewport, so the sphere swells up and collides
+  // with the headline — shrink it and lift it clear instead.
+  const isNarrow = useThree((state) => state.size.width) < 768;
+
+  return (
+    // On a phone the sphere is both shrunk and lifted well above centre: at
+    // desktop proportions it lands squarely on the headline, and the legibility
+    // mask is far smaller in absolute pixels at 390px wide so it cannot
+    // compensate on its own.
+    <group scale={isNarrow ? 0.5 : 1} position={[0, isNarrow ? 1.55 : 0.35, 0]}>
+      <NodeSphere />
+    </group>
+  );
+};
+
+/* ------------------------------------------------------------------------ */
+/* Canvas                                                                    */
+/* ------------------------------------------------------------------------ */
 
 /**
  * Exported as default so `dynamic(() => import("./HeroScene"))` resolves
@@ -172,7 +193,7 @@ const HeroScene: FC = () => {
       {/* Always-present ambient wash. Doubles as the loading state and as the
           fallback whenever the canvas cannot paint. */}
       <div className="absolute inset-0 grid place-items-center" aria-hidden>
-        <div className="h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.05),transparent_70%)] blur-3xl" />
+        <div className="h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(109,40,217,0.07),transparent_70%)] blur-3xl" />
       </div>
 
       <Canvas
@@ -191,11 +212,12 @@ const HeroScene: FC = () => {
           canvas.addEventListener("webglcontextrestored", () => setContextLost(false));
         }}
       >
-        {/* Brighter ambient than the dark theme so shadowed faces don't read as
-            dirty smudges on a white page. */}
-        <ambientLight intensity={1.1} />
-        <directionalLight position={[4, 6, 4]} intensity={1.6} color="#ffffff" />
-        <directionalLight position={[-5, -2, 2]} intensity={0.7} color="#cfd8e6" />
+        {/* Ambient is low because the surfaces are pigmented: flooding a
+            saturated material with white ambient desaturates it. The
+            directionals do the shaping. */}
+        <ambientLight intensity={0.3} />
+        <directionalLight position={[4, 6, 4]} intensity={2.2} color="#ffffff" />
+        <directionalLight position={[-5, -2, 2]} intensity={1.1} color="#a5b4fc" />
 
         <Rig />
 
