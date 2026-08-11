@@ -26,7 +26,7 @@
  * canvas is offscreen anyway.
  */
 
-import { useMemo, useRef, type FC } from "react";
+import { useEffect, useMemo, useRef, type FC } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { ScreenQuad } from "@react-three/drei";
 import { AddEquation, Color, CustomBlending, OneFactor, Vector2 } from "three";
@@ -230,6 +230,28 @@ const LightRays: FC<LightRaysProps> = ({
   const mesh = useRef<Mesh>(null);
   const smoothMouse = useRef({ x: 0.5, y: 0.5 });
 
+  /*
+    Pointer tracked on the WINDOW rather than through R3F's `state.pointer`.
+
+    R3F derives its pointer from events on the canvas element, and this canvas
+    is the hero's backdrop: it sits behind the scrim and all the copy, so it
+    never receives a pointermove and `state.pointer` stays frozen at its
+    initial value. `followMouse` was therefore doing nothing at all, which is
+    most of why the rays looked static compared with the original — on the
+    reference page the fan swings as the cursor moves.
+  */
+  const pointer = useRef({ x: 0.5, y: 0.5 });
+  useEffect(() => {
+    if (!followMouse) return;
+    const onMove = (e: PointerEvent) => {
+      pointer.current.x = e.clientX / window.innerWidth;
+      // Shader space has +Y up; clientY is +Y down.
+      pointer.current.y = 1 - e.clientY / window.innerHeight;
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [followMouse]);
+
   // Built once and then mutated in useFrame. Rebuilding this object every
   // render would force three to re-upload every uniform each frame.
   const uniforms = useMemo(
@@ -258,17 +280,30 @@ const LightRays: FC<LightRaysProps> = ({
   const size = useThree((state) => state.size);
   const dpr = useThree((state) => state.viewport.dpr);
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     // The shader works in DEVICE pixels — `iResolution.x` scales ray length and
     // fade distance, so feeding it CSS pixels would make the rays reach
     // noticeably shorter on a retina screen than on a standard one.
     uniforms.iResolution.value.set(size.width * dpr, size.height * dpr);
 
+    uniforms.iTime.value += delta;
+
+    /*
+      The fan is ANCHORED. Position and direction come straight from the origin
+      and do not move on their own.
+
+      An earlier revision rotated this direction on a slow sine to add motion.
+      That was the wrong reading of the effect: it swings the entire fan across
+      the frame like a searchlight, which is not what light rays do and not what
+      the reference does. All of the reference's movement happens INSIDE a fixed
+      fan — see the shader's `baseStrength`, where two sin/cos terms over the
+      ray angle scroll with `iTime`, so individual shafts brighten, dim and
+      slide past each other while the cone itself stays put. Speed is the knob
+      for that; direction is not.
+    */
     const { anchor, dir } = getAnchorAndDir(raysOrigin, size.width * dpr, size.height * dpr);
     uniforms.rayPos.value.set(anchor[0], anchor[1]);
     uniforms.rayDir.value.set(dir[0], dir[1]);
-
-    uniforms.iTime.value += delta;
 
     // Keep the live props in sync so tweaking them hot-reloads without a remount.
     uniforms.raysColor.value.set(raysColor);
@@ -284,12 +319,12 @@ const LightRays: FC<LightRaysProps> = ({
     uniforms.uIntensity.value = intensity;
 
     if (followMouse && mouseInfluence > 0) {
-      // `state.pointer` is -1..1 with +Y up; the shader wants 0..1 with +Y up.
-      const targetX = state.pointer.x * 0.5 + 0.5;
-      const targetY = state.pointer.y * 0.5 + 0.5;
-      const smoothing = 0.92;
-      smoothMouse.current.x = smoothMouse.current.x * smoothing + targetX * (1 - smoothing);
-      smoothMouse.current.y = smoothMouse.current.y * smoothing + targetY * (1 - smoothing);
+      // Eased toward the pointer rather than snapped to it, so the fan glides
+      // instead of jumping. Upstream's 0.92 is per-frame and therefore
+      // framerate-dependent; this is the same feel expressed per-second.
+      const k = 1 - Math.exp(-delta * 6);
+      smoothMouse.current.x += (pointer.current.x - smoothMouse.current.x) * k;
+      smoothMouse.current.y += (pointer.current.y - smoothMouse.current.y) * k;
       uniforms.mousePos.value.set(smoothMouse.current.x, smoothMouse.current.y);
     }
   });

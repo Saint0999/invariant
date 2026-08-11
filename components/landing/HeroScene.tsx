@@ -578,17 +578,24 @@ const HeroScene: FC = () => {
           Draws behind the coins; see LightRays for why it lives in this canvas
           rather than being the upstream drop-in component.
         */}
+        {/*
+          Values kept at the reference's own settings rather than retuned by
+          eye. `lightSpread` and `rayLength` in particular are what separate the
+          fan into distinct shafts; narrowing the spread to 0.38 as an earlier
+          pass did collapsed them into one smooth cone, which is a large part of
+          why the movement stopped being legible. Only the colour is ours.
+        */}
         <LightRays
           raysOrigin="top-center"
           raysColor="#f2e3c8"
-          raysSpeed={0.7}
-          lightSpread={0.38}
-          rayLength={2.6}
-          fadeDistance={1.2}
-          saturation={0.85}
+          raysSpeed={1}
+          lightSpread={0.5}
+          rayLength={3}
+          fadeDistance={1}
+          saturation={0.9}
           followMouse
-          mouseInfluence={0.08}
-          intensity={1.05}
+          mouseInfluence={0.1}
+          intensity={1.15}
         />
 
         <Rig />
