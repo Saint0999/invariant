@@ -1,2 +1,42 @@
 @import "tailwindcss";
 html, body { background: #0A0A0C; }
+
+/*
+  Floating currency marks in the "One route across" section.
+
+  The drift is deliberately small (a dozen-odd pixels) and very slow. Each tile
+  carries its own --coin-dur / --coin-delay / --coin-tilt so a dozen of them
+  never beat in sync — the moment two neighbours share a phase the whole cloud
+  reads as one rigid sheet sliding up and down instead of individual objects.
+
+  --coin-dx/--coin-dy are per-tile too, and dx is what stops the cloud looking
+  mechanical: with a purely vertical offset every tile travels the same axis, so
+  the eye picks up the shared direction no matter how the timings are staggered.
+  A few pixels sideways, different per tile, reads as drifting.
+
+  The rotation is baked into the same keyframes rather than sitting on the
+  element as a static transform, because a `transform` on the element would be
+  overwritten by the animation for its whole duration.
+*/
+@keyframes coin-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--coin-tilt, 0deg));
+  }
+  50% {
+    transform: translate3d(var(--coin-dx, 0px), var(--coin-dy, -12px), 0)
+      rotate(calc(var(--coin-tilt, 0deg) * -1));
+  }
+}
+
+.animate-coin-float {
+  animation: coin-float var(--coin-dur, 9s) ease-in-out var(--coin-delay, 0s) infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-coin-float {
+    animation: none;
+    transform: rotate(var(--coin-tilt, 0deg));
+  }
+}

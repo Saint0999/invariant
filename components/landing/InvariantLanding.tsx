@@ -37,19 +37,8 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useState, type FC, type ReactNode } from "react";
-import {
-  ArrowRight,
-  ArrowUpDown,
-  BadgeCheck,
-  BookOpen,
-  Coins,
-  Gauge,
-  Landmark,
-  Menu,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { useState, type CSSProperties, type FC, type ReactNode } from "react";
+import { ArrowRight, ArrowUpDown, BookOpen, Menu, X } from "lucide-react";
 
 import GradualBlur from "./GradualBlur";
 
@@ -82,8 +71,12 @@ export interface InvariantLandingProps {
   networks?: SupportedNetwork[];
 }
 
+/*
+  No "Features" entry: the section it pointed at (#features) is gone, replaced
+  by the currency cloud. An anchor to an id that no longer exists is a link that
+  silently does nothing, so the entry went with the section.
+*/
 const DEFAULT_NAV: NavLink[] = [
-  { label: "Features", href: "#features" },
   { label: "Currencies", href: "#currencies" },
   { label: "Security", href: "#security" },
   { label: "Docs", href: "#docs" },
@@ -387,60 +380,206 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
  * Supporting sections
  * ========================================================================== */
 
-interface Feature {
-  title: string;
-  body: string;
-  icon: FC<{ className?: string }>;
+/**
+ * One tile in the currency cloud.
+ *
+ * `x`/`y` are the tile's CENTRE as a percentage of the section box — the
+ * wrapper pulls itself back by half its own size — so a tile can be placed
+ * relative to the headline without knowing how big it renders at.
+ */
+interface CloudCoin {
+  label: string;
+  /** Path to the coin mark under /public, e.g. "/btc.svg". */
+  logo: string;
+  x: string;
+  y: string;
+  size: "sm" | "md" | "lg";
+  /** Resting rotation in degrees; the float animation swings through it. */
+  tilt: number;
+  /** Pixels of travel at the midpoint of the float, x then y. */
+  drift: [number, number];
+  /** Seconds. Staggered so no two neighbours drift in phase. */
+  delay: number;
+  duration: number;
+  /**
+   * Tiles this far out get dropped on phones — at 390px wide the outer ring
+   * would otherwise sit on top of the headline rather than around it.
+   */
+  desktopOnly?: boolean;
 }
 
-const FEATURES: Feature[] = [
-  {
-    title: "One route, any chain",
-    body: "Bridge and swap collapse into a single signed intent. No manual hops, no stranded gas on a chain you'll never use again.",
-    icon: Coins,
-  },
-  {
-    title: "Rate locked before you sign",
-    body: "We hold the quote for 30 seconds and absorb the slippage. What the quote shows is what lands in your account.",
-    icon: Gauge,
-  },
-  {
-    title: "Fiat out in 51 countries",
-    body: "SEPA, FPS, ACH and local rails, settled from the same transaction that closed your swap.",
-    icon: Landmark,
-  },
-  {
-    title: "Non-custodial by construction",
-    body: "Keys never leave your wallet. Contracts are audited, verified on-chain, and reserves are attested continuously.",
-    icon: ShieldCheck,
-  },
+/*
+  Thirteen marks, hand-placed rather than generated: nine assets plus the four
+  networks (Solana, Base, Arbitrum, Polygon) that also appear in the hero row.
+
+  SCATTERED, NOT RINGED. The earlier pass placed these at roughly one radius
+  from the centre and walked round the edge in order, and the eye reads that as
+  a circle however uneven the individual offsets are. What breaks it is varying
+  the DISTANCE, not the angle: Tether and Cardano sit just outside the type,
+  Bitcoin and Dogecoin a good deal further out, USD Coin and Arbitrum right out
+  at the margins. Some sit almost on top of each other, some have a lot of empty
+  space around them — even spacing is the other half of what reads as a ring.
+
+  The only hard rule is the centre, roughly 24–76% across and 32–70% down,
+  which stays clear for the headline. Everything else is judged by eye.
+*/
+const CLOUD_COINS: CloudCoin[] = [
+  { label: "Solana", logo: "/sol.svg", x: "44%", y: "7%", size: "sm", tilt: -5, drift: [6, -14], delay: 2.6, duration: 15 },
+  // dx is positive to match Bitcoin's: on a phone these two are only ~12px
+  // apart at the closest, and opposing drifts would walk them into each other.
+  { label: "Ethereum", logo: "/eth.svg", x: "33%", y: "22%", size: "md", tilt: 6, drift: [6, -10], delay: 1.4, duration: 18 },
+  { label: "Tether", logo: "/usdt.svg", x: "66%", y: "24%", size: "sm", tilt: 9, drift: [5, -16], delay: 0.8, duration: 13.5 },
+  { label: "BNB", logo: "/bnb.svg", x: "87%", y: "19%", size: "lg", tilt: -6, drift: [-9, -9], delay: 2, duration: 20 },
+  { label: "XRP", logo: "/xrp.svg", x: "79%", y: "41%", size: "sm", tilt: 7, drift: [8, -12], delay: 3.2, duration: 16.5, desktopOnly: true },
+  { label: "Base", logo: "/base.svg", x: "93%", y: "63%", size: "sm", tilt: 5, drift: [-6, -15], delay: 1.1, duration: 14, desktopOnly: true },
+  // desktopOnly for the same reason as USD Coin below: with the box shortened
+  // on mobile this one lands on the last two lines of the support paragraph.
+  { label: "Avalanche", logo: "/avax.svg", x: "68%", y: "73%", size: "md", tilt: 7, drift: [7, -11], delay: 1.2, duration: 17, desktopOnly: true },
+  { label: "Arbitrum", logo: "/arb.svg", x: "83%", y: "90%", size: "md", tilt: -7, drift: [-8, -13], delay: 2.9, duration: 19 },
+  { label: "Polygon", logo: "/matic.svg", x: "52%", y: "93%", size: "sm", tilt: -4, drift: [9, -8], delay: 2.3, duration: 14.5 },
+  { label: "Cardano", logo: "/ada.svg", x: "34%", y: "77%", size: "sm", tilt: 6, drift: [-5, -16], delay: 3.6, duration: 12.5 },
+  { label: "Dogecoin", logo: "/doge.svg", x: "21%", y: "88%", size: "lg", tilt: -9, drift: [6, -10], delay: 1.9, duration: 18.5 },
+  // desktopOnly: on a 390px screen the support paragraph runs the full width
+  // and this tile lands underneath the second line of it.
+  { label: "USD Coin", logo: "/usdc.svg", x: "6%", y: "61%", size: "md", tilt: 8, drift: [-7, -14], delay: 0.4, duration: 16, desktopOnly: true },
+  { label: "Bitcoin", logo: "/btc.svg", x: "12%", y: "25%", size: "lg", tilt: -8, drift: [8, -11], delay: 0, duration: 21 },
 ];
 
-const FeatureGrid: FC = () => (
-  <section id="features" className="relative mx-auto w-[min(1200px,calc(100%-2rem))] py-28">
-    <div className="mx-auto max-w-2xl text-center">
-      <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-3.5 py-1.5 text-xs font-medium tracking-wide text-white/60 backdrop-blur-sm">
-        <BadgeCheck className="h-3.5 w-3.5 text-white/50" />
-        Why it converts
-      </span>
-      <h2 className="mt-5 text-balance bg-gradient-to-b from-white to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold tracking-[-0.03em] text-transparent sm:text-5xl">
-        Built for the moment you actually need the money.
-      </h2>
+/** Tile box + inner mark, kept in step so the mark never crowds its padding. */
+const COIN_SIZES: Record<CloudCoin["size"], { box: string; mark: string }> = {
+  sm: { box: "h-11 w-11 rounded-xl sm:h-14 sm:w-14 sm:rounded-2xl", mark: "h-5 w-5 sm:h-7 sm:w-7" },
+  md: { box: "h-14 w-14 rounded-2xl sm:h-[4.5rem] sm:w-[4.5rem]", mark: "h-7 w-7 sm:h-9 sm:w-9" },
+  lg: { box: "h-16 w-16 rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem] sm:rounded-3xl", mark: "h-8 w-8 sm:h-11 sm:w-11" },
+};
+
+/**
+ * The currency cloud — headline in the middle, supported assets drifting around
+ * it. Replaces the old four-card feature grid: the cards said in prose what the
+ * marks now say at a glance, and a wall of copy right under a 3D hero was the
+ * part of the page people scrolled past.
+ *
+ * The tiles are decorative and the section is `aria-hidden` on the cloud only —
+ * the headline and the supporting line carry the meaning, and thirteen list
+ * items of chain names read as noise in a screen reader.
+ */
+const CurrencyCloud: FC = () => (
+  <section
+    id="currencies"
+    /*
+      my-* rather than more py-*: the padding is inside the box the tiles are
+      positioned against, so growing it would spread the cloud back out — the
+      opposite of pulling the marks in towards the claim. Margin adds the
+      breathing room from the hero above and the closing CTA below without
+      touching the percentage grid the tiles sit on.
+    */
+    /*
+      Every vertical value here is mobile-first and roughly halved from the
+      desktop one. The tiles are positioned as PERCENTAGES of this box, so its
+      height is also the cloud's radius — a 42rem box on a phone put ~60px of
+      dead air above the first tile and pushed the whole section a screen and a
+      half tall, with a visible gap between the hero and the first mark. 38rem
+      still clears the three-line headline at the centre.
+    */
+    className="relative isolate mx-auto my-8 grid w-[min(1200px,calc(100%-2rem))] min-h-[38rem] place-items-center overflow-hidden py-10 sm:my-28 sm:min-h-[50rem] sm:py-24"
+  >
+    {/* ---- Layer 1: the drifting marks --------------------------------- */}
+    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+      {CLOUD_COINS.map(({ label, logo, x, y, size, tilt, drift, delay, duration, desktopOnly }) => {
+        const { box, mark } = COIN_SIZES[size];
+
+        return (
+          <div
+            key={label}
+            className={
+              "absolute -translate-x-1/2 -translate-y-1/2 " +
+              (desktopOnly ? "hidden sm:block" : "block")
+            }
+            style={{ left: x, top: y }}
+          >
+            {/*
+              Two nested elements on purpose: the wrapper owns the centring
+              translate, the child owns the animation. Collapsing them would put
+              the keyframes and the -50%/-50% on the same `transform`, and the
+              animation would win — every tile would snap to its raw left/top.
+            */}
+            <div
+              className="animate-coin-float"
+              style={
+                {
+                  "--coin-tilt": `${tilt}deg`,
+                  "--coin-dx": `${drift[0]}px`,
+                  "--coin-dy": `${drift[1]}px`,
+                  "--coin-delay": `${delay}s`,
+                  "--coin-dur": `${duration}s`,
+                } as CSSProperties
+              }
+            >
+              <span
+                className={
+                  "grid place-items-center border border-white/10 bg-white/[0.055] shadow-[0_20px_45px_-20px_rgba(0,0,0,0.95)] backdrop-blur-md " +
+                  box
+                }
+              >
+                {/* `unoptimized` for the same reason as the hero row: Next's
+                    optimizer refuses SVGs without dangerouslyAllowSVG. */}
+                <Image
+                  src={logo}
+                  alt=""
+                  width={44}
+                  height={44}
+                  unoptimized
+                  className={"object-contain " + mark}
+                />
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
 
-    <div className="mt-14 grid gap-4 sm:grid-cols-2">
-      {FEATURES.map(({ title, body, icon: Icon }) => (
-        <div
-          key={title}
-          className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.055] to-white/[0.015] p-7 backdrop-blur-sm transition-colors duration-300 hover:border-white/20 hover:from-white/[0.09] hover:to-white/[0.03]"
-        >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-white/[0.14] to-white/[0.04] text-white/80 ring-1 ring-inset ring-white/10">
-            <Icon className="h-5 w-5" />
-          </span>
-          <h3 className="mt-5 text-lg font-semibold tracking-tight text-white">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-white/50">{body}</p>
-        </div>
-      ))}
+    {/*
+      ---- Layer 2: legibility scrim ------------------------------------
+      Same charcoal wash as the hero, and for the same reason: tiles pass close
+      to the headline and the type has to stay the brightest thing in the box.
+      Sized in percentages, so it needs its own value per breakpoint.
+
+      THE HORIZONTAL RADIUS MUST NOT EXCEED 50%. In a radial-gradient the first
+      length is the radius, not the diameter, so `ellipse 80%` puts the gradient
+      edge at 1.6× the box's half-width — the ramp is still around 35% opaque
+      where the section ends, and `overflow-hidden` slices it there. That left
+      two hard vertical seams down the sides of the mobile layout, reading as a
+      panel behind the text rather than as atmosphere. At 50% the ellipse
+      reaches zero exactly at the left and right edges, so there is nothing left
+      to clip; the stops below are re-weighted to keep the middle as dark as it
+      was. The desktop value was always under the limit, which is why the seam
+      only ever showed on phones.
+    */}
+    <div
+      className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_50%_30%_at_50%_50%,rgba(20,20,22,0.9)_0%,rgba(20,20,22,0.78)_55%,rgba(20,20,22,0.3)_82%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_28%_at_50%_50%,rgba(20,20,22,0.86)_0%,rgba(20,20,22,0.62)_48%,rgba(20,20,22,0.18)_80%,rgba(20,20,22,0)_100%)]"
+      aria-hidden
+    />
+
+    {/* ---- Layer 3: the claim ------------------------------------------ */}
+    {/* max-w-3xl, sized to the headline: at sm:text-6xl "24 chains, 51
+        countries" measures ~700px, and anything narrower breaks it onto a
+        third line, which loses the two-line shape the section is built on. */}
+    <div className="relative flex max-w-3xl flex-col items-center text-center">
+      <p className="text-sm font-semibold tracking-tight text-white/55 sm:text-base">
+        One route across
+      </p>
+
+      {/* Same brushed-silver clip as the hero headline. `pb-1` because a
+          clipped gradient crops descenders flush at the box edge. */}
+      <h2 className="mt-3 text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl">
+        180+ assets
+        <br />
+        24 chains, 51 countries
+      </h2>
+
+      <p className="mt-7 max-w-md text-pretty text-sm leading-relaxed text-white/50 sm:text-base">
+        Hold whatever you hold. Every mark here settles through the same signed
+        intent, at the rate you were quoted.
+      </p>
     </div>
   </section>
 );
@@ -493,7 +632,27 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
   launchLabel = "Launch Converter",
   networks = DEFAULT_NETWORKS,
 }) => (
-  <div className="relative min-h-screen bg-[#141416] bg-[linear-gradient(180deg,#17171A_0%,#141416_35%,#101012_100%)] font-sans antialiased selection:bg-white selection:text-[#141416]">
+  /*
+    FLAT base colour, deliberately — no page-level vertical gradient.
+
+    There used to be a linear-gradient(#17171A → #141416 → #101012) here. Across
+    the whole 2371px document that is a total travel of FOUR 8-bit values per
+    channel, so the browser held each value flat for 207px in the upper third
+    and 385px below before stepping. That is what produced the horizontal
+    banding — the "waves" that made the page look like a low-bitrate video.
+
+    Every other soft gradient on this page changes level every 10-24px (the
+    ambient washes below, the hero scrim) and is invisible as banding. Only this
+    one was pathological, because it was the only one asking for a near-zero
+    slope over a very long distance.
+
+    Deleting it costs almost nothing: the entire gradient spanned seven levels
+    top to bottom, imperceptible AS a gradient but glaring as steps. The ambient
+    washes below still supply the depth it was there for. Do not reintroduce a
+    slow full-page gradient in near-black; there is no 8-bit colour available to
+    draw it smoothly.
+  */
+  <div className="relative min-h-screen bg-[#141416] font-sans antialiased selection:bg-white selection:text-[#141416]">
     {/*
       Muted ambient washes so the page never reads as flat charcoal. All
       NEUTRAL — a cool grey top light, a warm silver from the left, a colder
@@ -515,7 +674,7 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
 
       <main>
         <Hero launchHref={launchHref} networks={networks} />
-        <FeatureGrid />
+        <CurrencyCloud />
         <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
       </main>
 
