@@ -51,7 +51,7 @@ import {
   X,
 } from "lucide-react";
 
-import PageBottomBlur from "./PageBottomBlur";
+import GradualBlur from "./GradualBlur";
 
 /* ==========================================================================
  * Types
@@ -278,7 +278,28 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       orbit is deliberately hollow, so the headline lands in the gap and the
       coins pass around it rather than behind it.
     */}
-    <div className="absolute inset-0 -z-20" aria-hidden>
+    {/*
+      Masked out towards the bottom edge. The section is `overflow-hidden` and
+      the canvas ends exactly on its boundary, so without this the light rays —
+      whose shader clamps its own fade at 0.5, i.e. never reaches zero — get
+      chopped mid-brightness and the seam reads as two different pages butted
+      together.
+
+      A MASK rather than a charcoal scrim on top: the canvas is alpha:true, so
+      masking simply reveals the page gradient behind it and there is no colour
+      to keep in sync. A scrim would have to hard-code whatever #141416→#101012
+      happens to be at this scroll offset, and drift the moment either changes.
+
+      It fades the orbiting coins along with the rays, which is the intent — they
+      dissolve into the page instead of being sliced off at the edge. Hence the
+      late 70% start and the extra midpoint stop: the brightness difference being
+      neutralised is subtle, so the ramp only needs the last stretch, and holding
+      full opacity until then keeps the gold on the lower coins.
+    */}
+    <div
+      className="absolute inset-0 -z-20 [-webkit-mask-image:linear-gradient(to_bottom,#000_0%,#000_70%,rgba(0,0,0,0.55)_86%,transparent_100%)] [mask-image:linear-gradient(to_bottom,#000_0%,#000_70%,rgba(0,0,0,0.55)_86%,transparent_100%)]"
+      aria-hidden
+    >
       <HeroScene />
     </div>
 
@@ -498,7 +519,15 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
         <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
       </main>
 
-      <footer id="security" className="border-t border-white/[0.08] py-10">
+      {/*
+        pb-24 (96px), not the pt-10 (40px) it is paired with. The bottom blur is
+        a 4rem/64px band fixed to the viewport bottom, so at the end of the page
+        anything within 64px of the bottom sits under it. The extra bottom
+        padding is what lifts the copyright line and the legal links clear of
+        that band — with ~32px of headroom — so they stay sharp while the blur
+        itself keeps running. Shrinking this below 64px puts them back under it.
+      */}
+      <footer id="security" className="border-t border-white/[0.08] pb-24 pt-10">
         <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-4 text-sm text-white/40 sm:flex-row">
           <span>
             © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
@@ -520,12 +549,27 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
 
     {/*
       Progressive blur pinned to the bottom of the VIEWPORT, so content softens
-      as it scrolls off the bottom edge rather than just ending — and fades out
-      over the footer. Sits OUTSIDE the z-10 content wrapper and carries its own
-      z-index; nothing between it and <body> uses transform/filter, which would
-      otherwise re-anchor a fixed element to that ancestor instead of the viewport.
+      as it scrolls off the bottom edge rather than just ending. Sits OUTSIDE the
+      z-10 content wrapper and carries its own z-index; nothing between it and
+      <body> uses transform/filter, which would otherwise re-anchor a fixed
+      element to that ancestor instead of the viewport.
+
+      It runs at constant strength for the whole page, including at the very
+      bottom. Keeping the footer readable is the footer's pb-24 doing the work
+      rather than the blur getting out of the way — see the comment there.
+
+      curve="ease-in" holds the blur near zero for most of the band and stacks it
+      into the last few pixels, so it reads as a soft edge rather than a frosted
+      strip across the bottom of the page.
     */}
-    <PageBottomBlur />
+    <GradualBlur
+      target="page"
+      position="bottom"
+      height="4rem"
+      strength={2}
+      divCount={6}
+      curve="ease-in"
+    />
   </div>
 );
 
