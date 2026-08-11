@@ -51,6 +51,8 @@ import {
   X,
 } from "lucide-react";
 
+import PageBottomBlur from "./PageBottomBlur";
+
 /* ==========================================================================
  * Types
  * ========================================================================== */
@@ -515,6 +517,15 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
         </div>
       </footer>
     </div>
+
+    {/*
+      Progressive blur pinned to the bottom of the VIEWPORT, so content softens
+      as it scrolls off the bottom edge rather than just ending — and fades out
+      over the footer. Sits OUTSIDE the z-10 content wrapper and carries its own
+      z-index; nothing between it and <body> uses transform/filter, which would
+      otherwise re-anchor a fixed element to that ancestor instead of the viewport.
+    */}
+    <PageBottomBlur />
   </div>
 );
 
