@@ -5,10 +5,13 @@
  * ---------------------------------------------------------------------------
  * Landing page for a crypto-to-crypto / crypto-to-fiat converter platform.
  *
- * DARK THEME — a near-black #0A0A0C surface lifted by a few very low-opacity
- * violet/cyan glows so it never reads as flat black. Type is white through
- * white/60. The 3D centrepiece is a full-bleed background layer behind centred
- * content, with a dark scrim keeping the headline legible over it.
+ * CHARCOAL THEME — a graphite #141416 surface lifted by a few very low-opacity
+ * NEUTRAL washes (cool grey / warm silver) so it never reads as flat black.
+ * Deliberately hue-free: the reference is monochrome, and any saturated glow
+ * immediately breaks that read, which is why the earlier violet/cyan pass was
+ * dropped. Type is white through white/60. The 3D centrepiece is a full-bleed
+ * background layer behind centred content, with a charcoal scrim keeping the
+ * headline legible over it.
  *
  * NEXT.JS (App Router) INTEGRATION
  * ---------------------------------------------------------------------------
@@ -23,7 +26,7 @@
  *
  * 4. Give <body> the same base colour so there is no white flash before
  *    hydration and overscroll matches:
- *    <body className="bg-[#0A0A0C]">
+ *    <body className="bg-[#141416]">
  *
  * CHAIN LOGOS
  * ---------------------------------------------------------------------------
@@ -110,7 +113,7 @@ const HeroScene = dynamic(() => import("./HeroScene"), {
 /** CSS-only stand-in so the hero never reflows when the WebGL bundle lands. */
 const SceneFallback: FC = () => (
   <div className="absolute inset-0 grid place-items-center" aria-hidden>
-    <div className="h-[38rem] w-[38rem] animate-pulse rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.20),rgba(6,182,212,0.08)_45%,transparent_72%)] blur-3xl" />
+    <div className="h-[38rem] w-[38rem] animate-pulse rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(226,232,240,0.13),rgba(148,163,184,0.06)_45%,transparent_72%)] blur-3xl" />
   </div>
 );
 
@@ -124,9 +127,10 @@ interface GlassProps {
 }
 
 /**
- * The frosted glass surface, dark-mode variant: a 30%-opacity black fill over
+ * The frosted glass surface, charcoal variant: a translucent graphite fill over
  * `backdrop-blur-md`, so the 3D centrepiece behind it blurs through rather
- * than being blocked out.
+ * than being blocked out. Graphite rather than black — over a #141416 page a
+ * black fill only ever reads as a darker hole, where #1D1D21 lifts.
  *
  * Deliberately only these three properties plus the shadow. Earlier revisions
  * stacked an inner ring and a heavy border on the same fill, and together
@@ -136,7 +140,7 @@ interface GlassProps {
 const GlassPanel: FC<GlassProps> = ({ className = "", children }) => (
   <div
     className={
-      "relative rounded-3xl border-b border-white/10 bg-black/30 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md " +
+      "relative rounded-3xl border-b border-white/10 bg-[#1D1D21]/55 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-md " +
       className
     }
   >
@@ -165,8 +169,10 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
           <nav className="flex items-center justify-between gap-6" aria-label="Main">
             {/* ---- Brand ------------------------------------------------- */}
             <a href="/" className="group flex items-center gap-3">
-              <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-white/10 ring-1 ring-inset ring-white/20">
-                <ArrowUpDown className="h-4 w-4 text-white" strokeWidth={2.75} />
+              {/* Silver chip with a dark glyph — the one high-key element in an
+                  otherwise low-key charcoal header, same as the reference. */}
+              <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-white via-[#E4E4E7] to-[#A1A1AA] ring-1 ring-inset ring-white/40">
+                <ArrowUpDown className="h-4 w-4 text-[#141416]" strokeWidth={2.75} />
               </span>
               <span className="flex flex-col leading-none">
                 <span className="text-[15px] font-semibold tracking-tight text-white">{brand}</span>
@@ -177,15 +183,15 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
             </a>
 
             {/* ---- Center links (desktop) -------------------------------- */}
-            <ul className="hidden items-center gap-1 lg:flex">
+            {/* Outlined pills, echoing the reference's bordered nav chips. */}
+            <ul className="hidden items-center gap-2 lg:flex">
               {links.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="relative rounded-full px-4 py-2 text-sm text-white/60 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    className="block rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-sm text-white/55 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                   >
-                    <span className="absolute inset-0 rounded-full transition-colors duration-200 hover:bg-white/[0.06]" />
-                    <span className="relative">{link.label}</span>
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -202,7 +208,7 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
 
               <a
                 href={launchHref}
-                className="group relative inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#0A0A0C] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:px-5"
+                className="group relative inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#141416] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:px-5"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 <span className="relative sm:hidden">Launch</span>
@@ -262,8 +268,8 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
 
     {/*
       ---- Layer 2: legibility scrim ------------------------------------
-      A dark wash rather than the light theme's white one — it has to match the
-      page base, or it reads as a grey disc floating over the background.
+      A charcoal wash — it has to match the page base exactly, or it reads as a
+      disc of a different grey floating over the background.
       Kept fairly transparent so the glass centrepiece still shows through:
       dark type-on-glass needs far less masking than the light theme did,
       because white text over a dark scrim is already high contrast.
@@ -272,13 +278,16 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       ~110px across on a 390px phone — hence the separate mobile-first value.
     */}
     <div
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_38%_at_50%_50%,rgba(10,10,12,0.88)_0%,rgba(10,10,12,0.72)_45%,rgba(10,10,12,0.3)_76%,rgba(10,10,12,0)_100%)] sm:bg-[radial-gradient(ellipse_52%_38%_at_50%_48%,rgba(10,10,12,0.82)_0%,rgba(10,10,12,0.66)_45%,rgba(10,10,12,0.25)_76%,rgba(10,10,12,0)_100%)]"
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_42%_at_50%_50%,rgba(20,20,22,0.88)_0%,rgba(20,20,22,0.74)_45%,rgba(20,20,22,0.3)_76%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_50%_44%_at_50%_48%,rgba(20,20,22,0.84)_0%,rgba(20,20,22,0.68)_45%,rgba(20,20,22,0.24)_78%,rgba(20,20,22,0)_100%)]"
       aria-hidden
     />
 
     {/* ---- Layer 3: content -------------------------------------------- */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      <h1 className="text-balance text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-white sm:text-6xl lg:text-7xl">
+      {/* Brushed-silver headline: a top-to-bottom white → #9A9AA4 clip, which
+          is where the reference gets its metallic type. `pb-1` because a
+          clipped gradient crops descenders flush at the box edge. */}
+      <h1 className="text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl lg:text-7xl">
         Turn any token into spendable money.
       </h1>
 
@@ -291,7 +300,7 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
         <a
           href={launchHref}
-          className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#0A0A0C] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#141416] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           Convert now
         </a>
@@ -375,7 +384,7 @@ const FeatureGrid: FC = () => (
         <BadgeCheck className="h-3.5 w-3.5 text-white/50" />
         Why it converts
       </span>
-      <h2 className="mt-5 text-balance text-4xl font-bold tracking-[-0.03em] text-white sm:text-5xl">
+      <h2 className="mt-5 text-balance bg-gradient-to-b from-white to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold tracking-[-0.03em] text-transparent sm:text-5xl">
         Built for the moment you actually need the money.
       </h2>
     </div>
@@ -384,9 +393,9 @@ const FeatureGrid: FC = () => (
       {FEATURES.map(({ title, body, icon: Icon }) => (
         <div
           key={title}
-          className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-7 backdrop-blur-sm transition-colors duration-300 hover:border-white/20 hover:bg-white/[0.06]"
+          className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.055] to-white/[0.015] p-7 backdrop-blur-sm transition-colors duration-300 hover:border-white/20 hover:from-white/[0.09] hover:to-white/[0.03]"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/[0.08] text-white/80 ring-1 ring-inset ring-white/10">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-white/[0.14] to-white/[0.04] text-white/80 ring-1 ring-inset ring-white/10">
             <Icon className="h-5 w-5" />
           </span>
           <h3 className="mt-5 text-lg font-semibold tracking-tight text-white">{title}</h3>
@@ -402,12 +411,12 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
   launchLabel,
 }) => (
   <section id="docs" className="mx-auto mb-28 w-[min(1200px,calc(100%-2rem))]">
-    <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-white/[0.03] px-8 py-20 text-center backdrop-blur-sm sm:px-16">
+    <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.015] px-8 py-20 text-center backdrop-blur-sm sm:px-16">
       <div
-        className="pointer-events-none absolute left-1/2 top-0 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.28),transparent_70%)] blur-3xl"
+        className="pointer-events-none absolute left-1/2 top-0 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(232,232,236,0.16),transparent_70%)] blur-3xl"
         aria-hidden
       />
-      <h2 className="relative text-balance text-4xl font-bold tracking-[-0.03em] text-white sm:text-5xl">
+      <h2 className="relative text-balance bg-gradient-to-b from-white to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold tracking-[-0.03em] text-transparent sm:text-5xl">
         Your first conversion takes under a minute.
       </h2>
       <p className="relative mx-auto mt-4 max-w-lg text-white/55">
@@ -417,7 +426,7 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
       <div className="relative mt-9 flex flex-wrap justify-center gap-3">
         <a
           href={launchHref}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#0A0A0C] transition-transform hover:scale-[1.03]"
+          className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#141416] transition-transform hover:scale-[1.03]"
         >
           {launchLabel}
           <ArrowRight className="h-4 w-4" />
@@ -445,17 +454,21 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
   launchLabel = "Launch Converter",
   networks = DEFAULT_NETWORKS,
 }) => (
-  <div className="relative min-h-screen bg-[#0A0A0C] font-sans antialiased selection:bg-white selection:text-[#0A0A0C]">
+  <div className="relative min-h-screen bg-[#141416] bg-[linear-gradient(180deg,#17171A_0%,#141416_35%,#101012_100%)] font-sans antialiased selection:bg-white selection:text-[#141416]">
     {/*
-      Muted ambient glows so the page never reads as flat black. Very low
-      opacity and heavily blurred — at higher values these stop being
-      atmosphere and start looking like coloured blobs. `fixed` keeps them
-      anchored to the viewport across the whole scroll.
+      Muted ambient washes so the page never reads as flat charcoal. All
+      NEUTRAL — a cool grey top light, a warm silver from the left, a colder
+      one from the right. The warm/cool split is what keeps a monochrome page
+      from looking dead; introducing an actual hue here does not.
+
+      Very low opacity and heavily blurred: at higher values these stop being
+      atmosphere and start looking like blobs. `fixed` keeps them anchored to
+      the viewport across the whole scroll.
     */}
     <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
-      <div className="absolute left-1/2 top-[-10rem] h-[40rem] w-[70rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.10),transparent_70%)] blur-3xl" />
-      <div className="absolute -left-40 top-1/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07),transparent_70%)] blur-3xl" />
-      <div className="absolute -right-40 top-2/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,0.07),transparent_70%)] blur-3xl" />
+      <div className="absolute left-1/2 top-[-12rem] h-[42rem] w-[75rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(228,228,231,0.09),transparent_70%)] blur-3xl" />
+      <div className="absolute -left-40 top-1/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(214,205,193,0.05),transparent_70%)] blur-3xl" />
+      <div className="absolute -right-40 top-2/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(180,188,200,0.05),transparent_70%)] blur-3xl" />
     </div>
 
     <div className="relative z-10">

@@ -9,64 +9,36 @@
  * import boundary to code-split against — the ~450 KB three.js bundle never
  * blocks the hero's text paint. Imported only from InvariantLanding.tsx.
  *
- * WHY THE GLOW RIG EXISTS
+ * WHY THE LIGHT RIG EXISTS
  * ---------------------------------------------------------------------------
  * `transmission={1}` makes a surface behave like glass: it has almost no
  * colour of its own and instead refracts whatever is behind and around it. On
- * a near-black page that is a trap — glass in front of black refracts black,
- * and the object vanishes, which is exactly the "not visible" failure of the
- * previous fully-metallic version.
+ * a charcoal page that is a trap — glass in front of near-black refracts
+ * near-black, and the object vanishes, which is exactly the "not visible"
+ * failure of the earlier fully-metallic version.
  *
- * So the scene ships its own light sources to refract: a set of saturated
- * emissive panels sitting behind the mesh (`GlowPanels`). They are what give
- * the glass its violet/cyan chromatic edges. They also mean the centrepiece
- * still reads if <Environment> fails to load its HDRI from the CDN, which is a
- * real failure mode on locked-down networks.
+ * So the scene ships its own light to refract, as a soft-box rig of
+ * `<Lightformer>`s inside `<Environment>` (see the Canvas below). An earlier
+ * revision used visible emissive planes floating behind the mesh instead;
+ * against a flat charcoal background those read as exactly what they are —
+ * hard-edged grey rectangles — so they were removed once the Lightformer rig
+ * made them redundant.
+ *
+ * MONOCHROME PALETTE
+ * ---------------------------------------------------------------------------
+ * Every light is NEUTRAL — cool white, warm silver, graphite — to match the
+ * page's charcoal theme. They are not all the same white, though: glass with
+ * nothing but one white around it refracts to flat grey. The warm/cool spread
+ * is what produces separation across the form without introducing a hue. For
+ * the same reason `iridescence` is dialled well down from the old violet build
+ * rather than off — a trace of it gives the chrome its edges, while a
+ * full-strength value paints rainbows straight back onto the page.
  */
 
 import { useEffect, useRef, useState, type FC } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Torus, TorusKnot } from "@react-three/drei";
+import { Environment, Lightformer, Torus, TorusKnot } from "@react-three/drei";
 import type { Group, Mesh } from "three";
-
-/* ------------------------------------------------------------------------ */
-/* Emissive backdrop panels                                                  */
-/* ------------------------------------------------------------------------ */
-
-interface PanelProps {
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: [number, number];
-  color: string;
-  intensity?: number;
-}
-
-/**
- * A flat emissive plane. `toneMapped={false}` keeps the colour at full
- * saturation instead of being rolled off by the renderer's tone curve — these
- * are meant to read as pure light, not as lit surfaces.
- */
-const GlowPanel: FC<PanelProps> = ({
-  position,
-  rotation = [0, 0, 0],
-  scale = [6, 6],
-  color,
-  intensity = 1,
-}) => (
-  <mesh position={position} rotation={rotation}>
-    <planeGeometry args={scale} />
-    <meshBasicMaterial color={color} toneMapped={false} opacity={intensity} transparent />
-  </mesh>
-);
-
-const GlowPanels: FC = () => (
-  <group position={[0, 0, -6]}>
-    <GlowPanel position={[-3.5, 1.5, 0]} color="#7c3aed" scale={[7, 7]} intensity={0.55} />
-    <GlowPanel position={[3.5, -1, 0.5]} color="#06b6d4" scale={[7, 7]} intensity={0.5} />
-    <GlowPanel position={[0, 3.5, -1]} color="#f472b6" scale={[6, 5]} intensity={0.35} />
-    <GlowPanel position={[0, -3.5, -1]} color="#22d3ee" scale={[6, 5]} intensity={0.3} />
-  </group>
-);
 
 /* ------------------------------------------------------------------------ */
 /* The centrepiece                                                           */
@@ -85,15 +57,16 @@ const glassProps = {
   transmission: 1,
   thickness: 2,
   roughness: 0.1,
-  iridescence: 1,
-  iridescenceIOR: 1.8,
-  iridescenceThicknessRange: [100, 1000] as [number, number],
+  // Trace iridescence only — enough for the rim to catch, not enough to tint.
+  iridescence: 0.25,
+  iridescenceIOR: 1.4,
+  iridescenceThicknessRange: [200, 500] as [number, number],
   ior: 1.55,
   clearcoat: 1,
   clearcoatRoughness: 0.05,
-  // Slight tint. Pure white glass on a dark page reads as grey haze; a faint
-  // cool cast gives the refraction something to shift against.
-  color: "#dfe6ff",
+  // Neutral, a hair off pure white so the refraction has something to shift
+  // against without reading as a colour.
+  color: "#e8e8ec",
   metalness: 0,
   envMapIntensity: 1.6,
 };
@@ -104,15 +77,21 @@ const glassProps = {
  * and clearcoat, but cost a normal forward pass instead of a scene re-render.
  */
 const shellProps = {
-  roughness: 0.08,
-  metalness: 0.35,
-  iridescence: 1,
-  iridescenceIOR: 1.9,
-  iridescenceThicknessRange: [100, 1000] as [number, number],
+  roughness: 0.12,
+  // Pushed up from 0.35: polished silver is what sells the charcoal theme, and
+  // metalness is what makes the rings read as brushed metal rather than as
+  // tinted plastic once the iridescence is turned down.
+  metalness: 0.78,
+  iridescence: 0.2,
+  iridescenceIOR: 1.4,
+  iridescenceThicknessRange: [200, 500] as [number, number],
   clearcoat: 1,
   clearcoatRoughness: 0.05,
-  color: "#b9c7ff",
-  envMapIntensity: 1.8,
+  color: "#c8c8ce",
+  // Metal shows only what it reflects, and half of this rig's sphere is the
+  // dark page. Overdriving the env map is what keeps the rings from going to
+  // slab black on their away-facing side.
+  envMapIntensity: 2.4,
 };
 
 const Centrepiece: FC = () => {
@@ -156,13 +135,19 @@ const Centrepiece: FC = () => {
 /* ------------------------------------------------------------------------ */
 
 const Rig: FC = () => {
-  // The centrepiece is authored for a desktop-width frame. On a phone the same
-  // world units fill a much narrower viewport, so it swamps the headline —
-  // shrink and lift it instead.
-  const isNarrow = useThree((state) => state.size.width) < 768;
+  // The centrepiece is authored for a wide desktop frame. The same world units
+  // fill a much narrower viewport proportionally larger, so it swamps the
+  // headline — shrink it as the frame narrows, and lift it clear of the copy
+  // on phones.
+  //
+  // Three steps rather than one breakpoint: a single 768px switch left the
+  // laptop range (roughly 800–1100px) rendering at full size, where the outer
+  // rings cut straight across the subheading and the network row.
+  const width = useThree((state) => state.size.width);
+  const scale = width < 768 ? 0.45 : width < 1150 ? 0.72 : 0.84;
 
   return (
-    <group scale={isNarrow ? 0.62 : 1} position={[0, isNarrow ? 1.2 : 0, 0]}>
+    <group scale={scale} position={[0, width < 768 ? 1.2 : 0, 0]}>
       <Centrepiece />
     </group>
   );
@@ -207,7 +192,7 @@ const HeroScene: FC = () => {
       {/* Always-present ambient glow. Doubles as the loading state and as the
           fallback whenever the canvas cannot paint. */}
       <div className="absolute inset-0 grid place-items-center" aria-hidden>
-        <div className="h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.22),rgba(6,182,212,0.10)_45%,transparent_72%)] blur-3xl" />
+        <div className="h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(232,232,236,0.14),rgba(148,152,162,0.07)_45%,transparent_72%)] blur-3xl" />
       </div>
 
       <Canvas
@@ -227,25 +212,81 @@ const HeroScene: FC = () => {
           canvas.addEventListener("webglcontextrestored", () => setContextLost(false));
         }}
       >
-        <ambientLight intensity={0.35} />
+        <ambientLight intensity={0.4} />
         <directionalLight position={[5, 6, 4]} intensity={2} color="#ffffff" />
-        <pointLight position={[-6, -2, 3]} intensity={45} color="#7c3aed" />
-        <pointLight position={[6, 3, 2]} intensity={35} color="#22d3ee" />
-
-        {/* Behind the glass, so it has something saturated to refract. */}
-        <GlowPanels />
+        {/* Warm key from below-left, cool fill from above-right. Same trick as
+            the CSS washes: temperature separation instead of hue. */}
+        <pointLight position={[-6, -2, 3]} intensity={40} color="#e8dfd2" />
+        <pointLight position={[6, 3, 2]} intensity={32} color="#cfd6e0" />
 
         <Rig />
 
         {/*
-          Required for the glossy materials to reflect anything. This fetches an
-          HDRI from drei's CDN at runtime (raw.githack.com ->
-          raw.githubusercontent.com); on a network where that is blocked the
-          reflections are lost, but unlike the previous metallic version the
-          centrepiece still reads, because GlowPanels above supplies in-scene
-          colour for the glass to refract.
+          Required for the glossy materials to reflect anything.
+
+          Built from Lightformers rather than `preset="..."`. A preset fetches
+          an HDRI from drei's CDN at runtime (raw.githack.com ->
+          raw.githubusercontent.com), and on any network that blocks it the
+          loader THROWS — which unmounts the whole canvas, not just the
+          reflections. Rendering the environment in-process is offline-safe and,
+          more to the point here, lets the reflections be explicitly neutral:
+          every packaged preset is a photograph of a real room and carries its
+          sky-blues and sodium-oranges straight back onto polished metal.
+
+          This is a soft-box rig: a big white key above, dimmer warm/cool sides
+          for temperature separation, and two bright strips that become the
+          hard specular highlights running along the rings.
         */}
-        <Environment preset="city" />
+        <Environment resolution={256} frames={1}>
+          <Lightformer
+            form="rect"
+            intensity={2.4}
+            color="#ffffff"
+            position={[0, 5, -6]}
+            scale={[12, 6, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={1.1}
+            color="#e8dfd2"
+            position={[-7, 0, -3]}
+            rotation={[0, Math.PI / 2.4, 0]}
+            scale={[9, 7, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={0.9}
+            color="#cfd6e0"
+            position={[7, 1, -3]}
+            rotation={[0, -Math.PI / 2.4, 0]}
+            scale={[9, 7, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={3}
+            color="#ffffff"
+            position={[-2.5, 3, 4]}
+            rotation={[0, 0, Math.PI / 3]}
+            scale={[1, 8, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={2}
+            color="#ffffff"
+            position={[3, -3, 3]}
+            rotation={[0, 0, -Math.PI / 3.5]}
+            scale={[0.8, 7, 1]}
+          />
+          {/* Floor bounce — keeps the underside off pure black. */}
+          <Lightformer
+            form="rect"
+            intensity={0.5}
+            color="#8a8d95"
+            position={[0, -6, -2]}
+            rotation={[Math.PI / 2, 0, 0]}
+            scale={[12, 8, 1]}
+          />
+        </Environment>
       </Canvas>
     </div>
   );
