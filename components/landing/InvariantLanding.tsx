@@ -128,19 +128,24 @@ interface GlassProps {
 
 /**
  * The frosted glass surface, charcoal variant: a translucent graphite fill over
- * `backdrop-blur-md`, so the 3D centrepiece behind it blurs through rather
- * than being blocked out. Graphite rather than black — over a #141416 page a
- * black fill only ever reads as a darker hole, where #1D1D21 lifts.
+ * a backdrop blur, so the coins passing behind it soften and show through
+ * rather than being blocked out. Graphite rather than black — over a #141416
+ * page a black fill only ever reads as a darker hole, where #1D1D21 lifts.
  *
- * Deliberately only these three properties plus the shadow. Earlier revisions
- * stacked an inner ring and a heavy border on the same fill, and together
- * those read as a solid bar — which is the bug that keeps recurring. Keep this
- * minimal.
+ * The fill is light and the blur heavy on purpose. Those two work against each
+ * other: raise the fill and the glass stops being glass, because there is
+ * nothing left behind it to blur. `saturate` puts back the colour that a large
+ * blur radius averages away, which is what keeps a gold coin behind the bar
+ * reading as gold rather than as a grey smudge.
+ *
+ * Deliberately only these properties plus the shadow. Earlier revisions stacked
+ * an inner ring and a heavy border on the same fill, and together those read as
+ * a solid bar — which is the bug that keeps recurring. Keep this minimal.
  */
 const GlassPanel: FC<GlassProps> = ({ className = "", children }) => (
   <div
     className={
-      "relative rounded-3xl border-b border-white/10 bg-[#1D1D21]/55 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-md " +
+      "relative rounded-3xl border-b border-white/10 bg-[#1D1D21]/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150 " +
       className
     }
   >

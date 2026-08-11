@@ -60,6 +60,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import type { Group, Mesh, Texture } from "three";
+import LightRays from "./LightRays";
 
 /* ------------------------------------------------------------------------ */
 /* Coin constants                                                            */
@@ -122,36 +123,50 @@ const COIN_METAL = {
     also why it survives being pure metal.
   */
   metalness: 1,
-  // Low, for a struck-and-polished finish rather than a cast one. Modulated
-  // per-texel by roughnessMap so the field, rim and mark do not all mirror
-  // identically — a perfectly uniform roughness is another CG tell.
-  roughness: 0.15,
   /*
-    GOLD.
+    NO CLEARCOAT.
+
+    This is the fix for the waxy look, and it is worth stating plainly so it
+    does not get "improved" back in: clearcoat models a transparent dielectric
+    layer sitting ON TOP of the base — lacquer, car paint, a varnished surface.
+    Over bare metal that is physically wrong, and it looks wrong in exactly the
+    way that was reported: the coat adds a second, broad, WHITE specular lobe
+    that has nothing to do with the gold underneath, and a soft white sheen
+    floating over a warm body is precisely how wax reads.
+
+    Polish on real metal does not come from a coat. It comes from low roughness,
+    which is what makes the reflection sharp — see below.
+  */
+  clearcoat: 0,
+  /*
+    Sharper than before. Roughness is what "polished" actually means on metal:
+    it controls how tightly the surroundings are mirrored, so a low value gives
+    hard-edged reflections and crisp highlight streaks, where a higher one
+    smears them into the broad soft glow that was reading as wax.
+
+    Still modulated per-texel by roughnessMap, so the field, rim and mark do not
+    all mirror identically — perfectly uniform roughness is its own CG tell.
+  */
+  roughness: 0.085,
+  /*
+    GOLD, darker than the first pass.
 
     On metal, `color` tints the reflection rather than lightening a base coat,
     so this one value carries the whole material: the coin reflects the light
-    box through a gold filter, and the specular streaks come through warm. Kept
-    deep rather than bright so it stays a struck-metal gold and not a yellow
-    plastic — the darkness of the previous gunmetal, moved into hue.
+    box through a gold filter. Deep on purpose — a light gold plus a bright
+    environment is what pushed the front-facing coins to a pale, waxy yellow.
+    Most of the perceived brightness should come from the specular streaks, not
+    from the body.
 
     The face artwork it multiplies is drawn in NEUTRAL greys (see drawCoinFace).
     That is deliberate: the greys used to carry a slight blue cast, which fought
     this tint and desaturated the gold toward brass.
   */
-  color: "#b8863a",
+  color: "#8f6526",
   // Gold absorbs most of the blue channel, so the same environment lands dimmer
-  // on it than on a neutral body — but not much headroom above this: a coin
-  // taking a light strip square on clips to white and loses the hue exactly
-  // where it is brightest.
-  envMapIntensity: 1.15,
-  // The polish itself: a specular coat over the metal, which is what produces
-  // the tight highlight that slides across a coin as it turns. The coat's
-  // reflection is WHITE regardless of the metal under it, so it is eased off
-  // the full value it ran at in gunmetal — at 1 it laid a colourless sheen over
-  // the gold and washed the hue out.
-  clearcoat: 0.65,
-  clearcoatRoughness: 0.08,
+  // on it than on a neutral body. Safe to run a little higher now that the
+  // white clearcoat lobe is gone — that, not this, was what clipped the fronts.
+  envMapIntensity: 1.45,
 };
 
 /* ------------------------------------------------------------------------ */
@@ -308,7 +323,7 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
             {...COIN_METAL}
             map={edge}
             bumpMap={edge}
-            bumpScale={1}
+            bumpScale={0.7}
             roughnessMap={edge}
           />
           <meshPhysicalMaterial
@@ -316,7 +331,7 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
             {...COIN_METAL}
             map={face}
             bumpMap={face}
-            bumpScale={2.2}
+            bumpScale={0.85}
             roughnessMap={face}
           />
           <meshPhysicalMaterial
@@ -324,7 +339,7 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
             {...COIN_METAL}
             map={back}
             bumpMap={back}
-            bumpScale={2.2}
+            bumpScale={0.85}
             roughnessMap={back}
           />
         </mesh>
@@ -556,6 +571,26 @@ const HeroScene: FC = () => {
         <pointLight position={[-6, -2, 3]} intensity={40} color="#e8dfd2" />
         <pointLight position={[6, 3, 2]} intensity={32} color="#cfd6e0" />
 
+        {/*
+          Volumetric rays washing down from above the header. Warm rather than
+          white, so they belong to the same light as the gold coins, and low
+          intensity — this is atmosphere behind the headline, not a spotlight.
+          Draws behind the coins; see LightRays for why it lives in this canvas
+          rather than being the upstream drop-in component.
+        */}
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#f2e3c8"
+          raysSpeed={0.7}
+          lightSpread={0.38}
+          rayLength={2.6}
+          fadeDistance={1.2}
+          saturation={0.85}
+          followMouse
+          mouseInfluence={0.08}
+          intensity={1.05}
+        />
+
         <Rig />
 
         {/*
@@ -637,7 +672,7 @@ const HeroScene: FC = () => {
                   reads as "polished" rather than merely "light grey". --- */}
           <Lightformer
             form="rect"
-            intensity={7}
+            intensity={3.1}
             color="#ffffff"
             position={[-3.5, 2.5, 5]}
             rotation={[0, 0, Math.PI / 3]}
@@ -645,7 +680,7 @@ const HeroScene: FC = () => {
           />
           <Lightformer
             form="rect"
-            intensity={6}
+            intensity={2.7}
             color="#ffffff"
             position={[3.5, -2, 5]}
             rotation={[0, 0, -Math.PI / 3.5]}
@@ -653,7 +688,7 @@ const HeroScene: FC = () => {
           />
           <Lightformer
             form="rect"
-            intensity={4.5}
+            intensity={3}
             color="#f2ece2"
             position={[5, 4, 2]}
             rotation={[0, -Math.PI / 4, Math.PI / 5]}
