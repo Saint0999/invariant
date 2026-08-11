@@ -80,8 +80,12 @@ const COIN_COUNT = 12;
  * makes the motion legible.
  */
 const RING_RADIUS = 5.1;
-/** Revolutions of the whole orbit, radians/sec. */
-const RING_SPEED = 0.2;
+/**
+ * Revolution of the whole orbit, radians/sec. Slow on purpose — this sits
+ * behind the headline, so it wants to read as ambient drift rather than as
+ * something asking to be watched. A full circuit takes about a minute.
+ */
+const RING_SPEED = 0.11;
 
 /** Radius of one coin once scaled — the cylinder itself is authored at r=1. */
 const COIN_SCALE = 0.62;
@@ -90,7 +94,13 @@ const COIN_SCALE = 0.62;
  * edge-on and collapses to a line; past ~1.0 it flattens into a face-on
  * dartboard and the orbit stops reading as an orbit. ~35° is the Saturn view.
  */
-const RING_LEAN = 0.62;
+const RING_LEAN = 0.66;
+/**
+ * Roll of the orbit around the view axis, radians. Tips the ellipse off
+ * horizontal so the ring reads as an object caught at an angle rather than as a
+ * level plate sitting square to the frame.
+ */
+const RING_ROLL = 0.44;
 
 /**
  * The polished-silver body. Same material family as the rings this replaced, so
@@ -98,19 +108,50 @@ const RING_LEAN = 0.62;
  * the brief was to copy the coins, not the palette.
  */
 const COIN_METAL = {
-  // White, so the struck-face texture below reproduces at its authored values —
-  // `color` multiplies `map`, and tinting it grey once dimmed the faces twice.
-  color: "#ffffff",
-  // Deliberately short of full metal. At 0.9 a PBR surface has almost no
-  // diffuse term, so the milled detail on the faces washed out into pure
-  // reflection and the currency marks were unreadable. 0.62 keeps the coins
-  // unmistakably metal while letting the strike show.
-  metalness: 0.62,
-  roughness: 0.24,
-  // Metal shows mostly what it reflects, and half of this rig's sphere is the
-  // dark page. Overdriving the env map keeps coins turning away from the key
-  // light from going to slab black.
-  envMapIntensity: 2.1,
+  /*
+    FULL metal. An intermediate value like 0.6 is not "a bit less shiny" — in a
+    PBR model it is a surface that is physically half dielectric, and a half
+    dielectric with a painted-looking albedo is exactly the recipe for cheap
+    plastic. That was the previous value, and that is what it looked like.
+
+    The reason it was lowered is that at full metalness there is no diffuse
+    term, so the struck detail stopped reading. The fix is to put that detail
+    where a real coin actually carries it — in the RELIEF and the POLISH, not in
+    the albedo. Hence the strong bumpMap and the roughnessMap on every face
+    below: the mark now shows because it catches the light differently, which is
+    also why it survives being pure metal.
+  */
+  metalness: 1,
+  // Low, for a struck-and-polished finish rather than a cast one. Modulated
+  // per-texel by roughnessMap so the field, rim and mark do not all mirror
+  // identically — a perfectly uniform roughness is another CG tell.
+  roughness: 0.15,
+  /*
+    GOLD.
+
+    On metal, `color` tints the reflection rather than lightening a base coat,
+    so this one value carries the whole material: the coin reflects the light
+    box through a gold filter, and the specular streaks come through warm. Kept
+    deep rather than bright so it stays a struck-metal gold and not a yellow
+    plastic — the darkness of the previous gunmetal, moved into hue.
+
+    The face artwork it multiplies is drawn in NEUTRAL greys (see drawCoinFace).
+    That is deliberate: the greys used to carry a slight blue cast, which fought
+    this tint and desaturated the gold toward brass.
+  */
+  color: "#b8863a",
+  // Gold absorbs most of the blue channel, so the same environment lands dimmer
+  // on it than on a neutral body — but not much headroom above this: a coin
+  // taking a light strip square on clips to white and loses the hue exactly
+  // where it is brightest.
+  envMapIntensity: 1.15,
+  // The polish itself: a specular coat over the metal, which is what produces
+  // the tight highlight that slides across a coin as it turns. The coat's
+  // reflection is WHITE regardless of the metal under it, so it is eased off
+  // the full value it ran at in gunmetal — at 1 it laid a colourless sheen over
+  // the gold and washed the hue out.
+  clearcoat: 0.65,
+  clearcoatRoughness: 0.08,
 };
 
 /* ------------------------------------------------------------------------ */
@@ -127,7 +168,7 @@ const COIN_METAL = {
  * separate height map would be more correct and, at this size on screen,
  * indistinguishable.
  */
-const drawCoinFace = (symbol: string | null): HTMLCanvasElement => {
+const drawCoinFace = (symbol: string): HTMLCanvasElement => {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -140,9 +181,9 @@ const drawCoinFace = (symbol: string | null): HTMLCanvasElement => {
   // Field. Off-centre highlight so a flat disc still reads as struck metal
   // before any lighting is applied.
   const field = ctx.createRadialGradient(c * 0.75, c * 0.7, c * 0.1, c, c, c);
-  field.addColorStop(0, "#e6e6ea");
-  field.addColorStop(0.55, "#c6c6cd");
-  field.addColorStop(1, "#9c9ca4");
+  field.addColorStop(0, "#e8e8e8");
+  field.addColorStop(0.55, "#c8c8c8");
+  field.addColorStop(1, "#9e9e9e");
   ctx.fillStyle = field;
   ctx.beginPath();
   ctx.arc(c, c, c, 0, Math.PI * 2);
@@ -150,29 +191,16 @@ const drawCoinFace = (symbol: string | null): HTMLCanvasElement => {
 
   // Raised rim, then the incuse line just inside it.
   ctx.lineWidth = size * 0.055;
-  ctx.strokeStyle = "#f2f2f5";
+  ctx.strokeStyle = "#f4f4f4";
   ctx.beginPath();
   ctx.arc(c, c, c * 0.9, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.lineWidth = size * 0.012;
-  ctx.strokeStyle = "#83838c";
+  ctx.strokeStyle = "#858585";
   ctx.beginPath();
   ctx.arc(c, c, c * 0.79, 0, Math.PI * 2);
   ctx.stroke();
-
-  // No mark means this is the reverse: struck blank apart from a plain inner
-  // ring. A real coin's reverse does not repeat the obverse, and reusing the
-  // obverse here put a MIRRORED currency glyph on the back of every coin that
-  // turned away from the camera, which reads as a rendering bug.
-  if (symbol === null) {
-    ctx.lineWidth = size * 0.02;
-    ctx.strokeStyle = "#adadb5";
-    ctx.beginPath();
-    ctx.arc(c, c, c * 0.42, 0, Math.PI * 2);
-    ctx.stroke();
-    return canvas;
-  }
 
   // The mark, drawn twice: a dark shadow offset down-right, then the light face
   // on top. That two-pass offset is the whole emboss illusion.
@@ -180,9 +208,9 @@ const drawCoinFace = (symbol: string | null): HTMLCanvasElement => {
   ctx.textBaseline = "middle";
   ctx.font = `bold ${size * 0.52}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`;
 
-  ctx.fillStyle = "#6f6f78";
+  ctx.fillStyle = "#707070";
   ctx.fillText(symbol, c + size * 0.014, c + size * 0.016);
-  ctx.fillStyle = "#f4f4f7";
+  ctx.fillStyle = "#f6f6f6";
   ctx.fillText(symbol, c, c);
 
   return canvas;
@@ -196,9 +224,9 @@ const drawReeding = (): HTMLCanvasElement => {
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  ctx.fillStyle = "#8e8e97";
+  ctx.fillStyle = "#909090";
   ctx.fillRect(0, 0, 8, 2);
-  ctx.fillStyle = "#f0f0f3";
+  ctx.fillStyle = "#f2f2f2";
   ctx.fillRect(0, 0, 4, 2);
 
   return canvas;
@@ -262,27 +290,42 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
       <group rotation={[Math.PI / 2, 0, 0]}>
         <mesh ref={spinRef} scale={COIN_SCALE}>
           <cylinderGeometry args={[1, 1, 0.14, 64]} />
-          {/* Cylinder material slots are ordered [wall, top cap, bottom cap]. */}
-          <meshStandardMaterial
+          {/*
+            Cylinder material slots are ordered [wall, top cap, bottom cap].
+
+            meshPhysicalMaterial rather than meshStandardMaterial purely for
+            `clearcoat`, which standard does not implement — the coat is what
+            gives the polished highlight.
+
+            Each face texture is bound three ways: as `map` to tint the
+            reflection, as `bumpMap` for the relief, and as `roughnessMap` so the
+            mark and rim take polish differently from the field. That last one is
+            what keeps the strike legible now that these are full metal with no
+            diffuse term to carry it.
+          */}
+          <meshPhysicalMaterial
             attach="material-0"
             {...COIN_METAL}
             map={edge}
             bumpMap={edge}
-            bumpScale={0.6}
+            bumpScale={1}
+            roughnessMap={edge}
           />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             attach="material-1"
             {...COIN_METAL}
             map={face}
             bumpMap={face}
-            bumpScale={1.2}
+            bumpScale={2.2}
+            roughnessMap={face}
           />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             attach="material-2"
             {...COIN_METAL}
             map={back}
             bumpMap={back}
-            bumpScale={1.2}
+            bumpScale={2.2}
+            roughnessMap={back}
           />
         </mesh>
       </group>
@@ -303,23 +346,39 @@ const Centrepiece: FC = () => {
    * because they touch `document`, so they cannot exist until the client
    * renders.
    */
-  const faces = useMemo<Texture[]>(
-    () =>
-      COIN_SYMBOLS.map((symbol) => {
-        const texture = new CanvasTexture(drawCoinFace(symbol));
-        texture.colorSpace = SRGBColorSpace;
-        texture.anisotropy = 4;
-        return texture;
-      }),
-    [],
-  );
+  const { faces, backs } = useMemo(() => {
+    const faces: Texture[] = [];
+    const backs: Texture[] = [];
 
-  /** One blank reverse, shared by every coin. */
-  const back = useMemo<Texture>(() => {
-    const texture = new CanvasTexture(drawCoinFace(null));
-    texture.colorSpace = SRGBColorSpace;
-    texture.anisotropy = 4;
-    return texture;
+    for (const symbol of COIN_SYMBOLS) {
+      // One canvas per symbol, sampled twice — the two sides differ only in how
+      // they are read, so there is no reason to draw the artwork again.
+      const canvas = drawCoinFace(symbol);
+
+      const front = new CanvasTexture(canvas);
+      front.colorSpace = SRGBColorSpace;
+      front.anisotropy = 4;
+      faces.push(front);
+
+      const back = new CanvasTexture(canvas);
+      back.colorSpace = SRGBColorSpace;
+      back.anisotropy = 4;
+      /*
+        three's cylinder caps are UV-mirrored against each other: generateCap
+        multiplies the V coordinate by +1 on the top and -1 on the bottom. So
+        the identical artwork lands upside down on the reverse, which is why an
+        earlier revision struck the reverse blank rather than showing a flipped
+        mark.
+
+        Flipping V back in the sampler fixes it properly, and costs a repeat and
+        an offset rather than a second canvas: v' = 1 - v.
+      */
+      back.repeat.set(1, -1);
+      back.offset.set(0, 1);
+      backs.push(back);
+    }
+
+    return { faces, backs };
   }, []);
 
   const edge = useMemo<Texture>(() => {
@@ -336,10 +395,10 @@ const Centrepiece: FC = () => {
   useEffect(
     () => () => {
       faces.forEach((texture) => texture.dispose());
-      back.dispose();
+      backs.forEach((texture) => texture.dispose());
       edge.dispose();
     },
-    [faces, back, edge],
+    [faces, backs, edge],
   );
 
   /**
@@ -358,7 +417,9 @@ const Centrepiece: FC = () => {
 
         return {
           angle: (i / COIN_COUNT) * Math.PI * 2,
-          spin: 0.25 + jitter(93.989) * 0.4,
+          // Kept in the same slow register as the orbit itself, and still
+          // varied per coin so the twelve do not flash their faces in lockstep.
+          spin: 0.13 + jitter(93.989) * 0.2,
           symbol: i % COIN_SYMBOLS.length,
         };
       }),
@@ -376,10 +437,16 @@ const Centrepiece: FC = () => {
     // The orbit plane leaned toward the camera. Near 0 it would be edge-on and
     // collapse to a line; near PI/2 it would be face-on and read as a flat
     // dartboard. This is the three-quarter view between the two.
-    <group rotation={[RING_LEAN, 0, 0.08]}>
+    <group rotation={[RING_LEAN, 0, RING_ROLL]}>
       <group ref={orbit}>
         {coins.map((config, i) => (
-          <Coin key={i} config={config} face={faces[config.symbol]} back={back} edge={edge} />
+          <Coin
+            key={i}
+            config={config}
+            face={faces[config.symbol]}
+            back={backs[config.symbol]}
+            edge={edge}
+          />
         ))}
       </group>
     </group>
@@ -503,58 +570,94 @@ const HeroScene: FC = () => {
           every packaged preset is a photograph of a real room and carries its
           sky-blues and sodium-oranges straight back onto polished metal.
 
-          This is a soft-box rig: a big white key above, dimmer warm/cool sides
-          for temperature separation, and two bright strips that become the
-          hard specular highlights running along the rings.
+          This is a CLOSED light box, not a few floating panels. That matters
+          now that the coins are full metal: metal has no diffuse term, so every
+          direction it can reflect has to contain something. The earlier rig lit
+          only part of the sphere and left the rest black, and once metalness
+          went to 1 the coins reflected mostly that black and went nearly
+          invisible. Six dim walls give a floor of reflected light everywhere;
+          the bright strips on top of them supply the highlights.
         */}
         <Environment resolution={256} frames={1}>
+          {/* --- The box. Dim, and warm on one side, cool on the other, so a
+                  turning coin shifts temperature instead of staying flat. --- */}
           <Lightformer
             form="rect"
-            intensity={2.4}
-            color="#ffffff"
-            position={[0, 5, -6]}
-            scale={[12, 6, 1]}
-          />
-          <Lightformer
-            form="rect"
-            intensity={1.1}
+            intensity={2.8}
             color="#e8dfd2"
-            position={[-7, 0, -3]}
-            rotation={[0, Math.PI / 2.4, 0]}
-            scale={[9, 7, 1]}
+            position={[-9, 0, 0]}
+            rotation={[0, Math.PI / 2, 0]}
+            scale={[18, 18, 1]}
           />
           <Lightformer
             form="rect"
-            intensity={0.9}
+            intensity={2.6}
             color="#cfd6e0"
-            position={[7, 1, -3]}
-            rotation={[0, -Math.PI / 2.4, 0]}
-            scale={[9, 7, 1]}
+            position={[9, 0, 0]}
+            rotation={[0, -Math.PI / 2, 0]}
+            scale={[18, 18, 1]}
           />
           <Lightformer
             form="rect"
-            intensity={3}
+            intensity={2.3}
+            color="#d6d6dc"
+            position={[0, 0, -9]}
+            scale={[18, 18, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={2.0}
+            color="#c4c4cc"
+            position={[0, 0, 9]}
+            rotation={[0, Math.PI, 0]}
+            scale={[18, 18, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={1.6}
+            color="#9a9aa2"
+            position={[0, -9, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            scale={[18, 18, 1]}
+          />
+
+          {/* --- Key: a broad soft-box overhead, the brightest thing in the
+                  sphere and the source of the main sheen. --- */}
+          <Lightformer
+            form="rect"
+            intensity={4.5}
             color="#ffffff"
-            position={[-2.5, 3, 4]}
-            rotation={[0, 0, Math.PI / 3]}
-            scale={[1, 8, 1]}
-          />
-          <Lightformer
-            form="rect"
-            intensity={2}
-            color="#ffffff"
-            position={[3, -3, 3]}
-            rotation={[0, 0, -Math.PI / 3.5]}
-            scale={[0.8, 7, 1]}
-          />
-          {/* Floor bounce — keeps the underside off pure black. */}
-          <Lightformer
-            form="rect"
-            intensity={0.5}
-            color="#8a8d95"
-            position={[0, -6, -2]}
+            position={[0, 8, -1]}
             rotation={[Math.PI / 2, 0, 0]}
-            scale={[12, 8, 1]}
+            scale={[14, 10, 1]}
+          />
+
+          {/* --- Strips. Narrow and bright, so they reflect as tight streaks
+                  that slide across a coin as it turns. This is the detail that
+                  reads as "polished" rather than merely "light grey". --- */}
+          <Lightformer
+            form="rect"
+            intensity={7}
+            color="#ffffff"
+            position={[-3.5, 2.5, 5]}
+            rotation={[0, 0, Math.PI / 3]}
+            scale={[0.7, 10, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={6}
+            color="#ffffff"
+            position={[3.5, -2, 5]}
+            rotation={[0, 0, -Math.PI / 3.5]}
+            scale={[0.5, 9, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={4.5}
+            color="#f2ece2"
+            position={[5, 4, 2]}
+            rotation={[0, -Math.PI / 4, Math.PI / 5]}
+            scale={[0.5, 8, 1]}
           />
         </Environment>
       </Canvas>

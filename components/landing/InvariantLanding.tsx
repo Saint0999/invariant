@@ -287,7 +287,7 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       hence the separate mobile-first value.
     */}
     <div
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_40%_at_50%_50%,rgba(20,20,22,0.9)_0%,rgba(20,20,22,0.76)_45%,rgba(20,20,22,0.3)_76%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_38%_at_50%_50%,rgba(20,20,22,0.86)_0%,rgba(20,20,22,0.7)_45%,rgba(20,20,22,0.26)_78%,rgba(20,20,22,0)_100%)]"
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_36%_at_50%_50%,rgba(20,20,22,0.82)_0%,rgba(20,20,22,0.64)_45%,rgba(20,20,22,0.22)_76%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_42%_32%_at_50%_50%,rgba(20,20,22,0.76)_0%,rgba(20,20,22,0.56)_45%,rgba(20,20,22,0.16)_78%,rgba(20,20,22,0)_100%)]"
       aria-hidden
     />
 
@@ -336,13 +336,15 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
                   Decorative: the visible label already names the chain, so alt
                   is empty rather than duplicating it for screen readers.
                 */}
+                {/* Full opacity: these carry brand colour now, and the 80% the
+                    monochrome placeholders wore just muted it. */}
                 <Image
                   src={logo}
                   alt=""
                   width={20}
                   height={20}
                   unoptimized
-                  className="h-5 w-5 object-contain opacity-80"
+                  className="h-5 w-5 object-contain"
                 />
                 {label}
               </span>
