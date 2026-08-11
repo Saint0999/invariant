@@ -183,13 +183,17 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
             </a>
 
             {/* ---- Center links (desktop) -------------------------------- */}
-            {/* Outlined pills, echoing the reference's bordered nav chips. */}
-            <ul className="hidden items-center gap-2 lg:flex">
+            {/*
+              Plain text, no chrome at all — no resting border and no hover
+              fill. Both made these read as four buttons competing with the one
+              real CTA. Hover brightens the type only.
+            */}
+            <ul className="hidden items-center gap-1 lg:flex">
               {links.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="block rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-sm text-white/55 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    className="block rounded-full px-4 py-2 text-sm text-white/55 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                   >
                     {link.label}
                   </a>
@@ -251,7 +255,7 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
 };
 
 /* ==========================================================================
- * Hero — fully centered, 3D as background
+ * Hero — centred copy, orbit running behind it
  * ========================================================================== */
 
 interface HeroProps {
@@ -261,7 +265,12 @@ interface HeroProps {
 
 const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
   <section className="relative isolate grid min-h-screen place-items-center overflow-hidden px-4">
-    {/* ---- Layer 1: the 3D background --------------------------------- */}
+    {/*
+      ---- Layer 1: the orbit -------------------------------------------
+      Full-bleed at every size, and centred on the same point as the copy. The
+      orbit is deliberately hollow, so the headline lands in the gap and the
+      coins pass around it rather than behind it.
+    */}
     <div className="absolute inset-0 -z-20" aria-hidden>
       <HeroScene />
     </div>
@@ -270,76 +279,76 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
       ---- Layer 2: legibility scrim ------------------------------------
       A charcoal wash — it has to match the page base exactly, or it reads as a
       disc of a different grey floating over the background.
-      Kept fairly transparent so the glass centrepiece still shows through:
-      dark type-on-glass needs far less masking than the light theme did,
-      because white text over a dark scrim is already high contrast.
 
-      Sized in viewport PERCENTAGES, so the desktop ellipse would collapse to
-      ~110px across on a 390px phone — hence the separate mobile-first value.
+      Only has to cover the copy itself now that the orbit is hollow, so it is
+      kept tight and fairly transparent: the coins should still be visible
+      passing behind the text, just dimmed. Sized in viewport PERCENTAGES, so
+      the desktop ellipse would collapse to ~110px across on a 390px phone —
+      hence the separate mobile-first value.
     */}
     <div
-      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_42%_at_50%_50%,rgba(20,20,22,0.88)_0%,rgba(20,20,22,0.74)_45%,rgba(20,20,22,0.3)_76%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_50%_44%_at_50%_48%,rgba(20,20,22,0.84)_0%,rgba(20,20,22,0.68)_45%,rgba(20,20,22,0.24)_78%,rgba(20,20,22,0)_100%)]"
+      className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_95%_40%_at_50%_50%,rgba(20,20,22,0.9)_0%,rgba(20,20,22,0.76)_45%,rgba(20,20,22,0.3)_76%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_38%_at_50%_50%,rgba(20,20,22,0.86)_0%,rgba(20,20,22,0.7)_45%,rgba(20,20,22,0.26)_78%,rgba(20,20,22,0)_100%)]"
       aria-hidden
     />
 
     {/* ---- Layer 3: content -------------------------------------------- */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      {/* Brushed-silver headline: a top-to-bottom white → #9A9AA4 clip, which
-          is where the reference gets its metallic type. `pb-1` because a
-          clipped gradient crops descenders flush at the box edge. */}
-      <h1 className="text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl lg:text-7xl">
-        Turn any token into spendable money.
-      </h1>
+        {/* Brushed-silver headline: a top-to-bottom white → #9A9AA4 clip, which
+            is where the reference gets its metallic type. `pb-1` because a
+            clipped gradient crops descenders flush at the box edge. */}
+        <h1 className="text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl">
+          Turn any token into spendable money.
+        </h1>
 
-      <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/55 sm:text-lg">
-        Cross-chain swaps and crypto-to-fiat payouts on one route. Rates locked before you
-        sign. Invariant routes liquidity across 24 chains and 51 countries.
-      </p>
+        <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/55 sm:text-lg">
+          Cross-chain swaps and crypto-to-fiat payouts on one route. Rates locked before you
+          sign. Invariant routes liquidity across 24 chains and 51 countries.
+        </p>
 
-      {/* ---- CTAs ---------------------------------------------------- */}
-      <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <a
-          href={launchHref}
-          className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#141416] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        >
-          Convert now
-        </a>
+        {/* ---- CTAs ---------------------------------------------------- */}
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={launchHref}
+            className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#141416] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          >
+            Convert now
+          </a>
 
-        <a
-          href="#rates"
-          className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/[0.1]"
-        >
-          See live rates
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </a>
-      </div>
+          <a
+            href="#rates"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/[0.1]"
+          >
+            See live rates
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </a>
+        </div>
 
-      {/* ---- Supported networks --------------------------------------- */}
-      <ul className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-        {networks.map(({ label, logo }) => (
-          <li key={label}>
-            <span className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white/50 transition-colors hover:text-white/80">
-              {/*
-                `unoptimized` is deliberate. Next's image optimizer refuses SVGs
-                unless you set `images.dangerouslyAllowSVG` in next.config —
-                bypassing it keeps these working with zero config. Swap to a
-                plain <img> if you'd rather not use next/image at all.
-                Decorative: the visible label already names the chain, so alt
-                is empty rather than duplicating it for screen readers.
-              */}
-              <Image
-                src={logo}
-                alt=""
-                width={20}
-                height={20}
-                unoptimized
-                className="h-5 w-5 object-contain opacity-80"
-              />
-              {label}
-            </span>
-          </li>
-        ))}
-      </ul>
+        {/* ---- Supported networks --------------------------------------- */}
+        <ul className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+          {networks.map(({ label, logo }) => (
+            <li key={label}>
+              <span className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white/50 transition-colors hover:text-white/80">
+                {/*
+                  `unoptimized` is deliberate. Next's image optimizer refuses SVGs
+                  unless you set `images.dangerouslyAllowSVG` in next.config —
+                  bypassing it keeps these working with zero config. Swap to a
+                  plain <img> if you'd rather not use next/image at all.
+                  Decorative: the visible label already names the chain, so alt
+                  is empty rather than duplicating it for screen readers.
+                */}
+                <Image
+                  src={logo}
+                  alt=""
+                  width={20}
+                  height={20}
+                  unoptimized
+                  className="h-5 w-5 object-contain opacity-80"
+                />
+                {label}
+              </span>
+            </li>
+          ))}
+        </ul>
     </div>
   </section>
 );
