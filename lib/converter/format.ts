@@ -57,6 +57,32 @@ export function formatAmount(value: number, asset: Asset): string {
   return formatted;
 }
 
+/**
+ * A UNIT RATE, as opposed to an amount of money.
+ *
+ * These need different rules, which is why this is not formatAmount. An amount
+ * of 0.010479 dollars is a rounding error and belongs written as "$0.01"; the
+ * RATE of 0.010479 dollars per rupee is the entire content of the row, and 2dp
+ * renders it as "$0.01" — every low-denomination currency on the board
+ * collapsing to the same meaningless number. So precision here follows
+ * magnitude only, never the currency's minor-unit convention.
+ *
+ * Minimum two decimals with a magnitude-driven maximum: Intl drops trailing
+ * zeros between the two, so 63781.5 prints as "63,781.50" while 0.006272 keeps
+ * all six places instead of being padded out to eight.
+ */
+export function formatRate(value: number): string {
+  if (!Number.isFinite(value)) return "";
+
+  const abs = Math.abs(value);
+  const max = abs >= 1000 ? 2 : abs >= 1 ? 4 : abs >= 0.01 ? 6 : 8;
+
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: max,
+  }).format(value);
+}
+
 /** "1 BTC = 63,729.00 USD", the line under the conversion. */
 export function formatRateLine(from: Asset, to: Asset, rate: number): string {
   return `1 ${from.code} = ${formatAmount(rate, to)} ${to.code}`;
