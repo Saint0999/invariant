@@ -25,6 +25,7 @@ import { useRates } from "@/components/converter/useRates";
 import { ASSETS, ASSETS_BY_CODE, convert, type Asset } from "@/lib/converter/assets";
 import { formatAge, formatRate } from "@/lib/converter/format";
 
+import Collapse from "./Collapse";
 import PriceChart from "./PriceChart";
 import { useHistory } from "./useHistory";
 
@@ -265,7 +266,14 @@ const RatesBoard: FC = () => {
                       </div>
                       <ChevronDown
                         className={
-                          "h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-200 " +
+                          // Eased like the panel it belongs to: the chevron and
+                          // the row are one gesture, and a chevron on a
+                          // different curve reads as a separate event. (This is
+                          // Tailwind's ease-in-out, cubic-bezier(.4,0,.2,1),
+                          // rather than the CSS keyword the keyframes use —
+                          // near-identical curves, and this one matches every
+                          // other utility-driven transition on the page.)
+                          "h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-200 ease-in-out " +
                           (open ? "rotate-180 text-white/60" : "")
                         }
                         aria-hidden
@@ -297,9 +305,9 @@ const RatesBoard: FC = () => {
                     </p>
                   </button>
 
-                  {open && (
+                  <Collapse open={open}>
                     <ChartPanel asset={asset} base={base} fallbackPositive={(change ?? 0) >= 0} />
-                  )}
+                  </Collapse>
                 </li>
               );
             })}
@@ -423,7 +431,12 @@ const ChartPanel: FC<{ asset: Asset; base: string; fallbackPositive: boolean }> 
       )}
 
       {data && (
-        <>
+        /*
+          Keyed by the window so switching 24h → 7d replays the fade. Without
+          the key React reuses the element and the new series simply appears in
+          place, which reads as the chart glitching rather than redrawing.
+        */
+        <div key={days} className="animate-rise-in">
           <PriceChart
             points={data.points}
             base={base}
@@ -435,7 +448,7 @@ const ChartPanel: FC<{ asset: Asset; base: string; fallbackPositive: boolean }> 
               Rate limit reached upstream — this chart may be up to an hour old.
             </p>
           )}
-        </>
+        </div>
       )}
     </div>
   );
