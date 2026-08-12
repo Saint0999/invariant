@@ -41,6 +41,7 @@ import { useState, type CSSProperties, type FC, type ReactNode } from "react";
 import { ArrowRight, ArrowUpDown, BookOpen, Menu, X } from "lucide-react";
 
 import GradualBlur from "./GradualBlur";
+import GraphDemo from "./GraphDemo";
 import ScrollFloat from "./ScrollFloat";
 import ScrollPin from "./ScrollPin";
 import SmoothScroll from "./SmoothScroll";
@@ -744,6 +745,7 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
         <Hero launchHref={launchHref} networks={networks} />
         <CurrencyCloud />
         <ToolPreview />
+        <GraphDemo />
         <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
       </main>
 
