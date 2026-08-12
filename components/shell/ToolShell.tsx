@@ -23,6 +23,8 @@ import Link from "next/link";
 import { ArrowUpDown, House } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
+import RateAttribution from "@/components/ui/RateAttribution";
+
 /** The tool routes, in the order they appear in the header. */
 const TOOL_LINKS: Array<{ href: string; label: string }> = [
   { href: "/converter", label: "Converter" },
@@ -123,9 +125,14 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
       <main className="animate-page-in-delayed py-14 sm:py-20">{children}</main>
 
       <footer className="border-t border-white/[0.08] py-8">
-        <p className="mx-auto w-[min(1200px,calc(100%-2rem))] text-center text-sm text-white/35">
-          © {new Date().getFullYear()} Invariant Labs. Non-custodial. Audited.
-        </p>
+        {/* Attribution sits in the frame rather than on each tool. Both routes
+            are the same feed, so a line per tool was the same sentence written
+            twice — and the per-tool notes that remain are about what the number
+            means (mid-market, fee-exclusive), not where it came from. */}
+        <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-2 text-sm text-white/35 sm:flex-row">
+          <span>© {new Date().getFullYear()} Invariant Labs. Non-custodial. Audited.</span>
+          <RateAttribution />
+        </div>
       </footer>
     </div>
   </div>

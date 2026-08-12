@@ -41,6 +41,7 @@ import { useState, type CSSProperties, type FC, type ReactNode } from "react";
 import { ArrowRight, ArrowUpDown, Menu, TrendingUp, X } from "lucide-react";
 
 import Collapse from "@/components/ui/Collapse";
+import RateAttribution from "@/components/ui/RateAttribution";
 import GradualBlur from "./GradualBlur";
 import SceneGlow from "./SceneGlow";
 import Starfield from "./Starfield";
@@ -869,9 +870,16 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
       */}
       <footer id="security" className="border-t border-white/[0.08] pb-24 pt-10">
         <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-4 text-sm text-white/40 sm:flex-row">
-          <span>
-            © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
-          </span>
+          {/* Copyright and attribution ride together on the left so the legal
+              links keep the right edge to themselves — three items spread
+              across a row read as three links, and the fourth would have been
+              the one that isn't. */}
+          <div className="flex flex-col items-center gap-1 sm:items-start">
+            <span>
+              © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
+            </span>
+            <RateAttribution />
+          </div>
           <div className="flex gap-6">
             <a href="/terms" className="transition-colors hover:text-white/70">
               Terms

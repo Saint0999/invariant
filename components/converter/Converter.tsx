@@ -268,8 +268,11 @@ const Converter: FC = () => {
       </div>
 
       <p className="mt-10 text-center text-xs leading-relaxed text-white/30">
-        Rates are indicative mid-market prices from CoinGecko and exclude network and payout
-        fees. They are not a quote or an offer to trade.
+        {/* The source moved to the footer, where it is stated once for both
+            tools. What is left here is what the number means, which is the part
+            that belongs next to the number. */}
+        Rates are indicative mid-market prices and exclude network and payout fees. They are
+        not a quote or an offer to trade.
       </p>
     </div>
   );
