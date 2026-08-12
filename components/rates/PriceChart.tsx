@@ -172,31 +172,44 @@ const PriceChart: FC<PriceChartProps> = ({ points, base, days, positive }) => {
           />
 
           {active && (
-            <>
-              <line
-                x1={project.x(hover as number)}
-                y1={0}
-                x2={project.x(hover as number)}
-                y2={HEIGHT}
-                stroke="rgba(255,255,255,0.25)"
-                strokeWidth={1}
-                vectorEffect="non-scaling-stroke"
-              />
-              {/*
-                r is in viewBox units on a non-uniformly stretched canvas, so a
-                circle would render as an ellipse. Drawn as a rect sized in
-                each axis's own units instead, which lands as a square dot.
-              */}
-              <rect
-                x={project.x(hover as number) - 0.6}
-                y={project.y(active[1]) - 1.2}
-                width={1.2}
-                height={2.4}
-                fill={stroke}
-              />
-            </>
+            <line
+              x1={project.x(hover as number)}
+              y1={0}
+              x2={project.x(hover as number)}
+              y2={HEIGHT}
+              stroke="rgba(255,255,255,0.25)"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
           )}
         </svg>
+
+        {/*
+          ---- The marker ------------------------------------------------
+          An HTML element rather than an SVG <circle>, because inside that
+          viewBox there is no such thing as a circle: preserveAspectRatio="none"
+          scales x and y by different factors, so any radius drawn in viewBox
+          units comes out as an ellipse whose eccentricity depends on how wide
+          the row happens to be. (The previous marker was a rect sized
+          separately per axis for exactly that reason — the one shape that
+          survives the stretch.)
+
+          Positioned OUTSIDE the stretched space, in percentages of the frame.
+          project.x/y already return 0–100 in a viewBox that fills the frame in
+          both directions, so a viewBox unit and a percent are the same number
+          here — no conversion, and it stays correct at any width.
+        */}
+        {active && (
+          <span
+            className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#141416]"
+            style={{
+              left: `${project.x(hover as number)}%`,
+              top: `${project.y(active[1])}%`,
+              backgroundColor: stroke,
+            }}
+            aria-hidden
+          />
+        )}
       </div>
     </div>
   );
