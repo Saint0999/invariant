@@ -322,9 +322,9 @@ const RatesBoard: FC = () => {
       )}
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs leading-relaxed text-white/30">
-        <span>
-          Indicative mid-market prices from CoinGecko, excluding network and payout fees.
-        </span>
+        {/* Source line lives in the shell footer now; this one says what the
+            prices are, not where they came from. */}
+        <span>Indicative mid-market prices, excluding network and payout fees.</span>
         <a
           href="/converter"
           className="inline-flex items-center gap-1 font-semibold text-white/50 transition-colors hover:text-white"
