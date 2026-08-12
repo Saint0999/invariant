@@ -29,6 +29,8 @@ const POLL_MS = 30_000;
 
 export interface RatesState {
   usdPerUnit: Record<string, number>;
+  /** 24h percent move against USD, keyed by asset code. Empty before first load. */
+  change24h: Record<string, number>;
   /** ms since epoch of the last successful upstream refresh; 0 before the first. */
   updatedAt: number;
   /** True during the very first load, when there is nothing to show yet. */
@@ -44,6 +46,7 @@ export interface RatesState {
 
 export function useRates(): RatesState {
   const [usdPerUnit, setUsdPerUnit] = useState<Record<string, number>>({});
+  const [change24h, setChange24h] = useState<Record<string, number>>({});
   const [updatedAt, setUpdatedAt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +70,9 @@ export function useRates(): RatesState {
       if (!aliveRef.current) return;
 
       setUsdPerUnit(payload.usdPerUnit);
+      // Older cached payloads (and any future feed without it) simply carry no
+      // change data; an empty map renders as "—" rather than as a wrong 0%.
+      setChange24h(payload.change24h ?? {});
       setUpdatedAt(payload.updatedAt);
       setStale(Boolean(payload.stale));
       setError(null);
@@ -118,6 +124,7 @@ export function useRates(): RatesState {
 
   return {
     usdPerUnit,
+    change24h,
     updatedAt,
     loading,
     refreshing,

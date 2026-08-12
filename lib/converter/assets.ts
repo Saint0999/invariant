@@ -107,6 +107,16 @@ export interface RatesPayload {
    * crypto→crypto, crypto→fiat, fiat→crypto and fiat→fiat identically.
    */
   usdPerUnit: Record<string, number>;
+  /**
+   * Percent move over the last 24 hours, keyed by `code`. For crypto this is
+   * the asset's own move against USD; for fiat it is the currency's move
+   * against USD, so USD itself is always 0.
+   *
+   * Optional because it is a display concern, not a conversion one — the
+   * converter ignores it, and an asset missing from here must still be
+   * convertible.
+   */
+  change24h?: Record<string, number>;
   /** When the upstream prices were last refreshed, ms since epoch. */
   updatedAt: number;
   /** True when this payload is a cached copy served after an upstream failure. */

@@ -52,7 +52,13 @@ export const AssetMark: FC<{ asset: Asset; className?: string }> = ({
         className
       }
     >
-      {asset.symbol ?? asset.code.slice(0, 3)}
+      {/*
+        Fiat gets its currency symbol; crypto without a mark gets ONE letter.
+        Three letters reads as a broken truncation when the ticker sits right
+        beside it — "LIN" next to "LINK", "TRX" next to "TRX" — where a single
+        initial reads as what it is, an avatar standing in for a missing logo.
+      */}
+      {asset.symbol ?? asset.code.slice(0, 1)}
     </span>
   );
 };

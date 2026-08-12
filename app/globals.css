@@ -1,5 +1,19 @@
 @import "tailwindcss";
-html, body { background: #0A0A0C; }
+
+/*
+  The page base colour, and it must MATCH the pages themselves (#141416).
+
+  It used to be #0A0A0C, which was visible as a near-black band wherever the
+  page box did not cover the viewport — the top of the tool routes, and the
+  overscroll bounce everywhere.
+
+  Note this rule is what actually sets the body colour, NOT the `bg-[#141416]`
+  class on <body> in app/layout.tsx. That class lives in Tailwind's `utilities`
+  cascade layer, and an unlayered rule like this one beats any layered rule no
+  matter how specific — so this declaration silently won, and the class had
+  never applied. Change the colour HERE; editing the class alone does nothing.
+*/
+html, body { background: #141416; }
 
 /*
   Floating currency marks in the "One route across" section.

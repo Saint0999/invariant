@@ -70,6 +70,9 @@ async function fetchRates(): Promise<RatesPayload> {
     ids: CRYPTO_ASSETS.map((a) => a.id).join(","),
     vs_currencies: FIAT_ASSETS.map((a) => a.id).join(","),
     precision: "full",
+    // Costs nothing extra — same request, same rate-limit budget — and it is
+    // what turns /rates from a list of numbers into a read on the market.
+    include_24hr_change: "true",
   });
 
   const apiKey = process.env.COINGECKO_API_KEY;
@@ -90,12 +93,16 @@ async function fetchRates(): Promise<RatesPayload> {
 
   const prices = (await res.json()) as PriceResponse;
   const usdPerUnit: Record<string, number> = {};
+  const change24h: Record<string, number> = {};
 
   for (const asset of CRYPTO_ASSETS) {
     const usd = prices[asset.id]?.usd;
     // Absent or zero means the coin did not price this round. Leaving it out of
     // the map is what makes convert() return null for it rather than quoting 0.
     if (typeof usd === "number" && usd > 0) usdPerUnit[asset.code] = usd;
+
+    const move = prices[asset.id]?.usd_24h_change;
+    if (typeof move === "number" && Number.isFinite(move)) change24h[asset.code] = move;
   }
 
   for (const fiat of FIAT_ASSETS) {
@@ -104,11 +111,15 @@ async function fetchRates(): Promise<RatesPayload> {
     // number that is exact.
     if (fiat.id === "usd") {
       usdPerUnit[fiat.code] = 1;
+      // The table is denominated in USD, so USD cannot move against itself.
+      change24h[fiat.code] = 0;
       continue;
     }
 
     let sum = 0;
     let n = 0;
+    let moveSum = 0;
+    let moveN = 0;
     for (const coin of CRYPTO_ASSETS) {
       const inUsd = prices[coin.id]?.usd;
       const inFiat = prices[coin.id]?.[fiat.id];
@@ -116,8 +127,33 @@ async function fetchRates(): Promise<RatesPayload> {
         sum += inUsd / inFiat;
         n += 1;
       }
+
+      /*
+        The FX move falls out of the same coin the same way the rate itself
+        does. If a coin rose 3% measured in dollars but only 2% measured in
+        euros, the euro gained on the dollar by the ratio of those two — the
+        coin's own volatility is in BOTH legs and divides out, which is what
+        makes this readable at all despite being derived from crypto.
+
+        Compounded, not subtracted: a naive `usdMove - fiatMove` is only
+        accurate for small moves, and drifts exactly when a currency has done
+        something worth reporting.
+      */
+      const usdMove = prices[coin.id]?.usd_24h_change;
+      const fiatMove = prices[coin.id]?.[`${fiat.id}_24h_change`];
+      if (
+        typeof usdMove === "number" &&
+        typeof fiatMove === "number" &&
+        Number.isFinite(usdMove) &&
+        Number.isFinite(fiatMove) &&
+        fiatMove > -100
+      ) {
+        moveSum += ((1 + usdMove / 100) / (1 + fiatMove / 100) - 1) * 100;
+        moveN += 1;
+      }
     }
     if (n > 0) usdPerUnit[fiat.code] = sum / n;
+    if (moveN > 0) change24h[fiat.code] = moveSum / moveN;
   }
 
   if (Object.keys(usdPerUnit).length < 2) {
@@ -126,7 +162,7 @@ async function fetchRates(): Promise<RatesPayload> {
     throw new Error("CoinGecko returned no usable prices");
   }
 
-  return { usdPerUnit, updatedAt: Date.now() };
+  return { usdPerUnit, change24h, updatedAt: Date.now() };
 }
 
 export async function GET() {

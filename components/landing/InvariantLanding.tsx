@@ -338,8 +338,11 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
             Convert now
           </a>
 
+          {/* Points at /rates now that the board exists — this button has said
+              "See live rates" since the first draft, and until now the nearest
+              thing to that was the converter's single quote line. */}
           <a
-            href="/converter"
+            href="/rates"
             className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/[0.1]"
           >
             See live rates
