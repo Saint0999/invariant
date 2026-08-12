@@ -85,7 +85,7 @@ const SEEDS: Record<DemoAsset, number> = { BTC: 20260812, ETH: 71145, SOL: 90210
  * alive and that a chart exists per asset. Anyone who wants to actually read
  * one is hovering it, and the cycle is paused for as long as they are.
  */
-const CYCLE_MS = 3000;
+const CYCLE_MS = 2000;
 
 const BASE = "USD";
 
