@@ -16,6 +16,135 @@
 html, body { background: #141416; }
 
 /*
+  A /rates row opening and shutting. Driven from Collapse.tsx, which supplies
+  the duration and decides when the element leaves the tree.
+
+  These animate `grid-template-rows` between 0fr and 1fr, which is what lets the
+  panel ease to its own natural height without anything measuring it — see
+  Collapse.tsx for why that beats a max-height guess, and why these are
+  keyframes rather than transitions.
+
+  `both` is what holds the panel at 1fr after opening and at 0fr while the
+  closing element waits to be unmounted. Without it each animation would snap
+  back to the element's natural height the moment it finished.
+*/
+@keyframes panel-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@keyframes panel-close {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/*
+  ease-in-out in both directions: the panel accelerates out of rest and decays
+  back into it, so neither end of the movement has a hard edge. It is the
+  symmetric choice — opening and closing are the same gesture reversed, and they
+  read as such.
+
+  The duration here is a fallback: Collapse sets animation-duration inline, and
+  an inline longhand beats the shorthand's value from this class. Keep the two
+  numbers the same anyway so the CSS reads honestly on its own.
+*/
+.animate-panel-open {
+  animation: panel-open 300ms ease-in-out both;
+}
+
+.animate-panel-close {
+  animation: panel-close 300ms ease-in-out both;
+}
+
+/*
+  Reduced motion drops the open animation entirely rather than shortening it.
+  The panel still needs to END at full height, which is what the explicit
+  grid-template-rows here does — with the animation off and nothing in its
+  place, `both` is no longer holding the final state.
+
+  The closing case needs no rule: Collapse unmounts immediately under this
+  media query instead of waiting out a duration that is not running.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-panel-open,
+  .animate-panel-close {
+    animation: none;
+    grid-template-rows: 1fr;
+  }
+}
+
+/*
+  Chart content arriving inside an expanded /rates row.
+
+  Separate from the row's own open/close animation (see Collapse.tsx) because
+  the two are not the same event: the row opens immediately on click, while the
+  chart lands whenever the history request returns — anywhere from instantly, if
+  the series is cached, to a couple of seconds. Fading the chart in on ITS mount
+  means the arrival is never an abrupt swap from the loading block, no matter
+  which of those two it is.
+
+  `both` holds the from-state during any delay and the to-state afterwards, so
+  there is no flash of the final position before the animation starts.
+*/
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 320ms ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in {
+    animation: none;
+  }
+}
+
+/*
+  Text cursor in the landing page's converter card, where the amount types
+  itself in.
+
+  `steps(2, jump-none)` rather than a fade: a real caret is on or off, and an
+  eased opacity ramp reads as a glowing bar rather than as a cursor. 1.06s is
+  the platform blink rate to within a few milliseconds.
+
+  The card stops the whole demo under prefers-reduced-motion — the caret is
+  hidden by a utility there rather than by this file, since with no typing
+  happening a blinking cursor would be pointing at nothing.
+*/
+@keyframes caret-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-caret-blink {
+  animation: caret-blink 1.06s steps(2, jump-none) infinite;
+}
+
+/*
   Floating currency marks in the "One route across" section.
 
   The drift is deliberately small (a dozen-odd pixels) and very slow. Each tile

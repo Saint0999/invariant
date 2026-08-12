@@ -44,6 +44,7 @@ import GradualBlur from "./GradualBlur";
 import ScrollFloat from "./ScrollFloat";
 import ScrollPin from "./ScrollPin";
 import SmoothScroll from "./SmoothScroll";
+import ToolPreview from "./ToolPreview";
 
 /* ==========================================================================
  * Types
@@ -742,6 +743,7 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
       <main>
         <Hero launchHref={launchHref} networks={networks} />
         <CurrencyCloud />
+        <ToolPreview />
         <ClosingCta launchHref={launchHref} launchLabel={launchLabel} />
       </main>
 
