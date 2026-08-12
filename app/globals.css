@@ -145,6 +145,57 @@ html, body { background: #141416; }
 }
 
 /*
+  The rates card's crawl on the landing page.
+
+  EXACTLY -50%, and the track must hold exactly two copies of the list. At the
+  end of the run the second copy sits where the first started, so the jump back
+  to 0% lands on an identical frame and the loop has no seam. Any other
+  distance and the list visibly snaps.
+
+  `linear` for the same reason: an eased crawl would slow at each end of the
+  cycle, which is precisely where the restart happens, and the pause gives away
+  a loop that is otherwise invisible.
+
+  Slow — a minute for the full circuit. This is background texture next to a
+  headline, and anything quicker turns a list of prices into something the eye
+  has to track.
+*/
+@keyframes marquee-y {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-marquee-y {
+  animation: marquee-y 60s linear infinite;
+}
+
+/*
+  Paused while the pointer is over the card: hovering is the reader deciding
+  whether to click, and a list still crawling under the cursor is one they have
+  to chase to read.
+
+  Written here rather than as a `group-hover:[animation-play-state:paused]`
+  utility on the element, which silently does nothing. Tailwind emits its
+  utilities inside `@layer utilities`, and every rule in this file is unlayered
+  — unlayered styles beat ANY layer regardless of specificity, so the shorthand
+  above (which carries an implicit `animation-play-state: running`) wins. The
+  paired rule has to live at the same level as the animation it is pausing.
+*/
+.group:hover .animate-marquee-y {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-y {
+    animation: none;
+  }
+}
+
+/*
   Floating currency marks in the "One route across" section.
 
   The drift is deliberately small (a dozen-odd pixels) and very slow. Each tile
