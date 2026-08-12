@@ -63,7 +63,10 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
         underneath — and unlike the landing page there is no long scroll here
         that would make a persistent navbar earn its keep.
       */}
-      <header className="mx-auto w-[min(1200px,calc(100%-2rem))]">
+      {/* Fades in on arrival, with the tool below following a beat later — see
+          .animate-page-in in globals.css. Pure CSS, so this file stays a Server
+          Component. */}
+      <header className="mx-auto w-[min(1200px,calc(100%-2rem))] animate-page-in">
         <div className="flex items-center justify-between gap-4 rounded-2xl border-b border-white/10 bg-[#1D1D21]/40 px-4 py-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150 sm:px-5">
           <Link href="/" className="flex items-center gap-3">
             {/* Silver chip with a dark glyph — the one high-key element in an
@@ -103,7 +106,7 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
         </div>
       </header>
 
-      <main className="py-14 sm:py-20">{children}</main>
+      <main className="animate-page-in-delayed py-14 sm:py-20">{children}</main>
 
       <footer className="border-t border-white/[0.08] py-8">
         <p className="mx-auto w-[min(1200px,calc(100%-2rem))] text-center text-sm text-white/35">
