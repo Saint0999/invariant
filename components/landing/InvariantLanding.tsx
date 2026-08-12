@@ -339,7 +339,7 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
           </a>
 
           <a
-            href="#rates"
+            href="/converter"
             className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/30 hover:bg-white/[0.1]"
           >
             See live rates
@@ -592,27 +592,24 @@ const CurrencyCloud: FC = () => (
         countries" measures ~700px, and anything narrower breaks it onto a
         third line, which loses the two-line shape the section is built on. */}
     {/*
-      Three ScrollFloat blocks that resolve in reading order while the scene is
-      pinned: the eyebrow, then the first headline line, then the second. Each
-      takes a slice of the pin's 0–1 progress, so the sequencing is a handful of
+      The two headline lines resolve in reading order while the scene is pinned,
+      each taking a slice of the pin's 0–1 progress, so the sequencing is four
       numbers rather than pieces of geometry.
 
-      The gap between the two headline slices is deliberate — a beat where the
-      first line sits finished before the second starts, which is what separates
-      "two things arriving in order" from "one long continuous crawl". The 0.06
-      lead-in and the 0.12 tail keep the first block from being mid-animation
-      the instant the pin engages, and let the finished pair hold on screen
-      before the scene releases.
+      The gap between the slices is deliberate — a beat where the first line
+      sits finished before the second starts, which is what separates "two
+      things arriving in order" from "one long continuous crawl". The 0.06
+      lead-in and the 0.12 tail keep the first line from being mid-animation the
+      instant the pin engages, and let the finished pair hold on screen before
+      the scene releases.
     */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      <ScrollFloat
-        className="text-sm font-semibold tracking-tight text-white/55 sm:text-base"
-        from={0.06}
-        to={0.22}
-        blur={6}
-      >
+      {/* Plain text, deliberately: the eyebrow is the label the two headline
+          lines complete, so it wants to be already there when they arrive
+          rather than being a third thing that animates. */}
+      <p className="text-sm font-semibold tracking-tight text-white/55 sm:text-base">
         One route across
-      </ScrollFloat>
+      </p>
 
       {/*
         The brushed-silver clip sits on each CHARACTER now rather than on the
@@ -628,15 +625,15 @@ const CurrencyCloud: FC = () => (
       <h2 className="mt-3 text-balance pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] sm:text-6xl">
         <ScrollFloat
           charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
-          from={0.14}
-          to={0.48}
+          from={0.06}
+          to={0.44}
           blur={14}
         >
           180+ assets
         </ScrollFloat>
         <ScrollFloat
           charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
-          from={0.56}
+          from={0.52}
           to={0.88}
           blur={14}
         >
@@ -692,7 +689,7 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
 const InvariantLanding: FC<InvariantLandingProps> = ({
   brand = "Invariant",
   navLinks = DEFAULT_NAV,
-  launchHref = "/convert",
+  launchHref = "/converter",
   launchLabel = "Launch Converter",
   networks = DEFAULT_NETWORKS,
 }) => (
