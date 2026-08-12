@@ -121,7 +121,7 @@ const Converter: FC = () => {
           Convert crypto and cash, both ways.
         </h1>
         <p className="mt-4 max-w-md text-pretty text-sm leading-relaxed text-white/50 sm:text-base">
-          Any of {Object.keys(ASSETS_BY_CODE).length} assets into any other — token to token, or
+          Any of {Object.keys(ASSETS_BY_CODE).length} assets into any other: token to token, or
           token straight to dollars, euros and rupees. Rates refresh every 30 seconds.
         </p>
       </div>
@@ -225,7 +225,7 @@ const Converter: FC = () => {
         {(error || stale) && (
           <p className="mt-3 text-xs text-amber-200/70">
             {error
-              ? "Live feed unreachable — showing the last rate we received."
+              ? "Live feed unreachable. Showing the last rate we received."
               : "The rate provider is slow to respond; this quote may be a few minutes old."}
           </p>
         )}

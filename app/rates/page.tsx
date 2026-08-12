@@ -11,7 +11,7 @@ import RatesBoard from "@/components/rates/RatesBoard";
 import ToolShell from "@/components/shell/ToolShell";
 
 export const metadata: Metadata = {
-  title: "Live rates — Invariant",
+  title: "Live rates · Invariant",
   description:
     "Live exchange rates for 16 cryptocurrencies and 20 world currencies, priced in any of them, with 24-hour moves.",
 };

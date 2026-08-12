@@ -125,8 +125,8 @@ const RatesBoard: FC = () => {
           Every rate on one board.
         </h1>
         <p className="mt-4 max-w-lg text-pretty text-sm leading-relaxed text-white/50 sm:text-base">
-          {ASSETS.length} assets — {ASSETS.filter((a) => a.kind === "crypto").length} tokens and{" "}
-          {ASSETS.filter((a) => a.kind === "fiat").length} world currencies — priced in whatever
+          {ASSETS.length} assets ({ASSETS.filter((a) => a.kind === "crypto").length} tokens and{" "}
+          {ASSETS.filter((a) => a.kind === "fiat").length} world currencies), priced in whatever
           you pick, refreshed every 30 seconds.
         </p>
       </div>
@@ -283,7 +283,7 @@ const RatesBoard: FC = () => {
                     <div className="text-right">
                       <p className="text-sm font-semibold tabular-nums text-white sm:text-[0.95rem]">
                         {price === null ? (
-                          <span className="text-white/30">—</span>
+                          <span className="text-white/30">n/a</span>
                         ) : (
                           <>
                             {baseAsset.symbol && baseAsset.kind === "fiat" ? baseAsset.symbol : ""}
@@ -318,7 +318,7 @@ const RatesBoard: FC = () => {
       {(error || stale) && (
         <p className="mt-3 text-center text-xs text-amber-200/70">
           {error
-            ? "Live feed unreachable — showing the last rates we received."
+            ? "Live feed unreachable. Showing the last rates we received."
             : "The rate provider is slow to respond; these rates may be a few minutes old."}
         </p>
       )}
@@ -445,7 +445,7 @@ const ChartPanel: FC<{ asset: Asset; base: string; fallbackPositive: boolean }> 
           />
           {data.stale && (
             <p className="mt-2 text-center text-[11px] text-amber-200/60">
-              Rate limit reached upstream — this chart may be up to an hour old.
+              Rate limit reached upstream, so this chart may be up to an hour old.
             </p>
           )}
         </div>
@@ -483,7 +483,7 @@ const SortHeader: FC<{
  * Muted shades rather than saturated ones so they still sit in the charcoal.
  */
 const Change: FC<{ value: number | null; compact?: boolean }> = ({ value, compact = false }) => {
-  if (value === null) return <span className="text-xs text-white/25">—</span>;
+  if (value === null) return <span className="text-xs text-white/25">n/a</span>;
 
   /*
     Anything that rounds away is flat, and must render as flat. Without this a
