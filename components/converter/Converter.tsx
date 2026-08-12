@@ -22,7 +22,9 @@
  */
 
 import { useEffect, useMemo, useState, type FC } from "react";
-import { ArrowUpDown, RefreshCw, TrendingUp } from "lucide-react";
+import { ArrowUpDown, RefreshCw } from "lucide-react";
+
+import LiveBadge from "@/components/ui/LiveBadge";
 
 import { ASSETS_BY_CODE, convert } from "@/lib/converter/assets";
 import { formatAge, formatAmount, formatRateLine, parseAmount } from "@/lib/converter/format";
@@ -110,10 +112,7 @@ const Converter: FC = () => {
     <div className="mx-auto w-[min(640px,calc(100%-2rem))]">
       {/* ---- Heading -------------------------------------------------- */}
       <div className="flex flex-col items-center text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
-          <TrendingUp className="h-3.5 w-3.5" />
-          Live market rates
-        </span>
+        <LiveBadge />
 
         {/* Brushed-silver clip, same recipe as the landing headline. `pb-1`
             because a clipped gradient crops descenders flush at the box edge. */}

@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useMemo, useState, type FC } from "react";
-import { ArrowUpDown, ChevronDown, RefreshCw, Search, TrendingUp } from "lucide-react";
+import { ArrowUpDown, ChevronDown, RefreshCw, Search } from "lucide-react";
 
 import AssetSelect, { AssetMark } from "@/components/converter/AssetSelect";
 import { useRates } from "@/components/converter/useRates";
@@ -26,6 +26,7 @@ import { ASSETS, ASSETS_BY_CODE, convert, type Asset } from "@/lib/converter/ass
 import { formatAge, formatRate } from "@/lib/converter/format";
 
 import Collapse from "@/components/ui/Collapse";
+import LiveBadge from "@/components/ui/LiveBadge";
 import PriceChart from "./PriceChart";
 import { useHistory } from "./useHistory";
 
@@ -116,10 +117,7 @@ const RatesBoard: FC = () => {
     <div className="mx-auto w-[min(1000px,calc(100%-2rem))]">
       {/* ---- Heading -------------------------------------------------- */}
       <div className="flex flex-col items-center text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
-          <TrendingUp className="h-3.5 w-3.5" />
-          Live market rates
-        </span>
+        <LiveBadge />
 
         <h1 className="mt-5 text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-5xl">
           Every rate on one board.

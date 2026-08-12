@@ -147,20 +147,120 @@ html, body { background: #141416; }
 }
 
 /*
-  Arrival transition for the tool routes.
+  Stars breathing in the closing card (see landing/Starfield.tsx).
+
+  Dips to a FRACTION of each star's own opacity rather than to a fixed value,
+  which is what keeps the field's weighting intact at the bottom of the cycle: a
+  faint star fades to nearly nothing, a bright one only dims. Animating to a
+  literal would level them all and turn the sky into a blinking grid.
+
+  Never reaches zero. A star that fully disappears reads as a rendering glitch
+  rather than as atmosphere, and with each element on its own duration and delay
+  the field would visibly thin and refill.
+*/
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--star-o);
+  }
+  50% {
+    opacity: calc(var(--star-o) * 0.3);
+  }
+}
+
+.animate-twinkle {
+  animation-name: twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/*
+  Stars hold at their base opacity under reduced motion. The inline `opacity`
+  on each element is what they fall back to, so switching the animation off
+  leaves the field intact rather than blank.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-twinkle {
+    animation: none;
+  }
+}
+
+/*
+  The specular sweep across the "Live market rates" pill (see ui/LiveBadge.tsx).
+
+  Travels a full pill width in each direction so the band is fully off one edge
+  at each end, never parked half-visible: the pill clips it, and anything left
+  standing inside the clip would read as a permanent bright smear rather than a
+  passing highlight.
+
+  The stop at 55% is the point of this being keyframes and not a plain loop. The
+  sweep takes 55% of the duration and the band then SITS off the right edge for
+  the remaining 45%, which is what makes this a periodic glint instead of a
+  strobe. A badge that never stops moving pulls the eye away from the heading it
+  is supposed to be introducing.
+*/
+@keyframes sheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  55%, 100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-sheen {
+  animation: sheen 4.5s cubic-bezier(0.4, 0, 0.2, 1) 900ms infinite;
+}
+
+/*
+  Hidden outright under reduced motion, rather than merely stopped. `animation:
+  none` alone would drop the band at its untransformed position — dead centre of
+  the pill — leaving exactly the static smear the keyframes exist to avoid.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheen {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/*
+  Arrival transition for every route: the tool pages, and the landing page's
+  navbar and hero copy.
 
   These are ordinary page loads — /converter and /rates are Server Components,
   and a click from the landing page swaps the whole frame in one paint. Without
   this the new page simply appears, which after the landing page's scrolled,
-  eased everything reads as a jump-cut.
+  eased everything reads as a jump-cut. The landing page had the same problem in
+  reverse: clicking home out of a tool dropped the hero in with no transition at
+  all.
 
   A CSS animation rather than anything in React, so the routes stay Server
   Components: there is no state to track and nothing to hydrate for it. The
   keyframes run on first paint and never again.
 
-  `both` holds the from-state through the delay below. Without it the header and
-  the tool would flash at full opacity for a frame before dropping back to
-  transparent to start.
+  BACKWARDS, NOT BOTH. This is load-bearing, and it is not a style preference.
+
+  `backwards` holds the from-state through the delay, which is the half that is
+  needed: without it the header and the tool flash at full opacity for a frame
+  before dropping back to transparent to start.
+
+  `forwards` is the half that must NOT be here. It keeps the final keyframe
+  applied forever, and that keyframe sets `transform: none` — which computes to
+  an identity MATRIX rather than to no transform at all. A transformed element
+  becomes the backdrop root for everything inside it, so every glass surface
+  under one of these classes was left blurring nothing: the tool headers, the
+  converter and rates cards, and the landing navbar all rendered as flat
+  translucent panels with the page showing through them sharp.
+
+  Dropping `forwards` costs nothing, because the to-state and the element's
+  natural state are the same — opacity 1, no transform — so there is nothing to
+  hold. The animation simply stops applying and the glass comes back.
+
+  The blur is therefore absent for the 420ms the animation runs. That is
+  invisible in practice and self-concealing: the element is fading up from zero
+  over exactly that window, and there is nothing to see through something that
+  is not opaque yet.
 */
 @keyframes page-in {
   from {
@@ -180,7 +280,7 @@ html, body { background: #141416; }
   convert something is not watching it.
 */
 .animate-page-in {
-  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 /*
@@ -191,7 +291,7 @@ html, body { background: #141416; }
   0s`, and an @layer utility cannot override it.
 */
 .animate-page-in-delayed {
-  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 90ms backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -255,10 +355,16 @@ html, body { background: #141416; }
 /*
   Floating currency marks in the "One route across" section.
 
-  The drift is deliberately small (a dozen-odd pixels) and very slow. Each tile
-  carries its own --coin-dur / --coin-delay / --coin-tilt so a dozen of them
-  never beat in sync — the moment two neighbours share a phase the whole cloud
-  reads as one rigid sheet sliding up and down instead of individual objects.
+  The drift is small (a couple of dozen pixels) and slow. Each tile carries its
+  own --coin-dur / --coin-delay / --coin-tilt so a dozen of them never beat in
+  sync — the moment two neighbours share a phase the whole cloud reads as one
+  rigid sheet sliding up and down instead of individual objects.
+
+  An earlier pass ran at roughly half this travel over longer periods, which
+  worked out to about 1.5px/s: below the speed at which slow drift registers as
+  movement at all, so the cloud read as a static arrangement. Amplitude and
+  period both moved to fix that, because amplitude alone would have bought a
+  bigger excursion at the same imperceptible velocity.
 
   --coin-dx/--coin-dy are per-tile too, and dx is what stops the cloud looking
   mechanical: with a purely vertical offset every tile travels the same axis, so
