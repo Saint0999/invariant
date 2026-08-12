@@ -18,12 +18,15 @@
  */
 
 import { useEffect, useMemo, useState, type FC } from "react";
-import { ArrowUpDown, RefreshCw, Search, TrendingUp } from "lucide-react";
+import { ArrowUpDown, ChevronDown, RefreshCw, Search, TrendingUp } from "lucide-react";
 
 import AssetSelect, { AssetMark } from "@/components/converter/AssetSelect";
 import { useRates } from "@/components/converter/useRates";
 import { ASSETS, ASSETS_BY_CODE, convert, type Asset } from "@/lib/converter/assets";
 import { formatAge, formatRate } from "@/lib/converter/format";
+
+import PriceChart from "./PriceChart";
+import { useHistory } from "./useHistory";
 
 type Filter = "all" | "crypto" | "fiat";
 type SortKey = "default" | "price" | "change";
@@ -50,6 +53,13 @@ const RatesBoard: FC = () => {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<SortKey>("default");
   const [query, setQuery] = useState("");
+  /**
+   * Code of the row showing its chart, or null. ONE at a time: each open row is
+   * a history request, and this endpoint is the one that trips CoinGecko's free
+   * rate limit. An accordion also keeps the board scannable — a page of open
+   * charts is no longer a table you can compare rows in.
+   */
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const baseAsset = ASSETS_BY_CODE[base];
 
@@ -225,45 +235,74 @@ const RatesBoard: FC = () => {
           </p>
         ) : (
           <ul>
-            {rows.map(({ asset, price, change }) => (
-              <li
-                key={asset.code}
-                className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-white/[0.05] px-4 py-3.5 transition-colors last:border-b-0 hover:bg-white/[0.03] sm:grid-cols-[1fr_10rem_7rem] sm:px-6"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <AssetMark asset={asset} className="h-8 w-8" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold tracking-tight text-white">
-                      {asset.code}
+            {rows.map(({ asset, price, change }) => {
+              const open = expanded === asset.code;
+
+              return (
+                <li key={asset.code} className="border-b border-white/[0.05] last:border-b-0">
+                  {/*
+                    The whole row is the control. A dedicated chevron button
+                    would put a 24px target inside a 56px row that already looks
+                    pressable, and on a phone that is the difference between
+                    opening a chart and missing it.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(open ? null : asset.code)}
+                    aria-expanded={open}
+                    className={
+                      "grid w-full grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/25 sm:grid-cols-[1fr_10rem_7rem] sm:px-6 " +
+                      (open ? "bg-white/[0.04]" : "hover:bg-white/[0.03]")
+                    }
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <AssetMark asset={asset} className="h-8 w-8" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold tracking-tight text-white">
+                          {asset.code}
+                        </p>
+                        <p className="truncate text-xs text-white/40">{asset.name}</p>
+                      </div>
+                      <ChevronDown
+                        className={
+                          "h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-200 " +
+                          (open ? "rotate-180 text-white/60" : "")
+                        }
+                        aria-hidden
+                      />
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-sm font-semibold tabular-nums text-white sm:text-[0.95rem]">
+                        {price === null ? (
+                          <span className="text-white/30">—</span>
+                        ) : (
+                          <>
+                            {baseAsset.symbol && baseAsset.kind === "fiat" ? baseAsset.symbol : ""}
+                            {formatRate(price)}
+                          </>
+                        )}
+                      </p>
+                      {/* The 24h column collapses into this cell on phones
+                          rather than being dropped — it is half the reason to
+                          open the page, and a third column does not fit at
+                          375px. */}
+                      <p className="sm:hidden">
+                        <Change value={change} compact />
+                      </p>
+                    </div>
+
+                    <p className="hidden text-right sm:block">
+                      <Change value={change} />
                     </p>
-                    <p className="truncate text-xs text-white/40">{asset.name}</p>
-                  </div>
-                </div>
+                  </button>
 
-                <div className="text-right">
-                  <p className="text-sm font-semibold tabular-nums text-white sm:text-[0.95rem]">
-                    {price === null ? (
-                      <span className="text-white/30">—</span>
-                    ) : (
-                      <>
-                        {baseAsset.symbol && baseAsset.kind === "fiat" ? baseAsset.symbol : ""}
-                        {formatRate(price)}
-                      </>
-                    )}
-                  </p>
-                  {/* The 24h column collapses into this cell on phones rather
-                      than being dropped — it is half the reason to open the
-                      page, and a third column does not fit at 375px. */}
-                  <p className="sm:hidden">
-                    <Change value={change} compact />
-                  </p>
-                </div>
-
-                <p className="hidden text-right sm:block">
-                  <Change value={change} />
-                </p>
-              </li>
-            ))}
+                  {open && (
+                    <ChartPanel asset={asset} base={base} fallbackPositive={(change ?? 0) >= 0} />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -295,6 +334,112 @@ const RatesBoard: FC = () => {
 /* ==========================================================================
  * Bits
  * ========================================================================== */
+
+/** Windows the chart offers, matching what /api/history accepts. */
+const WINDOWS: Array<{ days: number; label: string }> = [
+  { days: 1, label: "24h" },
+  { days: 7, label: "7d" },
+  { days: 30, label: "30d" },
+];
+
+/**
+ * The expanded row: window toggles and the chart.
+ *
+ * Its own component so the history hook is mounted per open row. Hoisting that
+ * state into RatesBoard would re-render all 35 rows on every hover readout
+ * inside the chart.
+ */
+const ChartPanel: FC<{ asset: Asset; base: string; fallbackPositive: boolean }> = ({
+  asset,
+  base,
+  fallbackPositive,
+}) => {
+  const [days, setDays] = useState(7);
+  const { data, loading, error } = useHistory(asset.code, base, days);
+
+  const window = WINDOWS.find((w) => w.days === days)?.label ?? `${days}d`;
+
+  return (
+    <div className="border-t border-white/[0.06] bg-black/20 px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="text-xs text-white/45">
+          <span className="font-semibold text-white/70">
+            {asset.code}/{base}
+          </span>{" "}
+          · past {window}
+          {data && (
+            <>
+              {" · "}
+              <span
+                className={
+                  Math.abs(data.change) < 0.005
+                    ? "text-white/40"
+                    : data.change >= 0
+                      ? "text-emerald-300/85"
+                      : "text-rose-300/85"
+                }
+              >
+                {Math.abs(data.change) < 0.005
+                  ? "0.00"
+                  : `${data.change >= 0 ? "+" : ""}${data.change.toFixed(2)}`}
+                %
+              </span>
+            </>
+          )}
+        </p>
+
+        <div className="flex items-center gap-1.5">
+          {WINDOWS.map((w) => (
+            <button
+              key={w.days}
+              type="button"
+              onClick={() => setDays(w.days)}
+              aria-pressed={days === w.days}
+              className={
+                "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors " +
+                (days === w.days
+                  ? "border-white/30 bg-white/[0.12] text-white"
+                  : "border-white/10 bg-white/[0.04] text-white/50 hover:border-white/25 hover:text-white")
+              }
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && !data && (
+        <div className="h-40 w-full animate-pulse rounded-xl bg-white/[0.04]" />
+      )}
+
+      {error && !data && (
+        <div className="flex h-40 flex-col items-center justify-center gap-1 text-center">
+          <p className="text-sm text-white/50">Chart unavailable</p>
+          {/* The upstream message is shown rather than swallowed: on the free
+              tier this is almost always a rate limit, and "responded 429" tells
+              the reader to wait a moment instead of to keep clicking. */}
+          <p className="max-w-xs text-xs text-white/30">{error}</p>
+        </div>
+      )}
+
+      {data && (
+        <>
+          <PriceChart
+            points={data.points}
+            base={base}
+            days={days}
+            positive={data.change >= 0 || (data.change === 0 && fallbackPositive)}
+          />
+          {data.stale && (
+            <p className="mt-2 text-center text-[11px] text-amber-200/60">
+              Rate limit reached upstream — this chart may be up to an hour old.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 const SortHeader: FC<{
   label: string;
