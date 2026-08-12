@@ -16,8 +16,9 @@
 html, body { background: #141416; }
 
 /*
-  A /rates row opening and shutting. Driven from Collapse.tsx, which supplies
-  the duration and decides when the element leaves the tree.
+  Any block opening and shutting: a /rates row, the landing navbar's mobile
+  drawer. Driven from ui/Collapse.tsx, which supplies the duration and decides
+  when the element leaves the tree.
 
   These animate `grid-template-rows` between 0fr and 1fr, which is what lets the
   panel ease to its own natural height without anything measuring it — see
@@ -86,7 +87,8 @@ html, body { background: #141416; }
 }
 
 /*
-  Chart content arriving inside an expanded /rates row.
+  Content arriving inside something that just opened: chart content in an
+  expanded /rates row, each link in the navbar's mobile drawer.
 
   Separate from the row's own open/close animation (see Collapse.tsx) because
   the two are not the same event: the row opens immediately on click, while the

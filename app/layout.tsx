@@ -5,8 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Invariant · Instant crypto to fiat, any chain",
-  description: "Cross-chain swaps and crypto-to-fiat payouts on one route.",
+  title: "Invariant · Live crypto and currency rates",
+  description:
+    "Live mid-market rates for 16 tokens and 20 world currencies. Convert between any two, or read the whole board.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

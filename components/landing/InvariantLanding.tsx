@@ -38,8 +38,9 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState, type CSSProperties, type FC, type ReactNode } from "react";
-import { ArrowRight, ArrowUpDown, BookOpen, Menu, X } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Menu, TrendingUp, X } from "lucide-react";
 
+import Collapse from "@/components/ui/Collapse";
 import GradualBlur from "./GradualBlur";
 import GraphDemo from "./GraphDemo";
 import ScrollFloat from "./ScrollFloat";
@@ -184,12 +185,7 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
               <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-white via-[#E4E4E7] to-[#A1A1AA] ring-1 ring-inset ring-white/40">
                 <ArrowUpDown className="h-4 w-4 text-[#141416]" strokeWidth={2.75} />
               </span>
-              <span className="flex flex-col leading-none">
-                <span className="text-[15px] font-semibold tracking-tight text-white">{brand}</span>
-                <span className="mt-2 hidden text-[10px] uppercase tracking-[0.18em] text-white/40 sm:block">
-                  Convert · Bridge · Cash out
-                </span>
-              </span>
+              <span className="text-[15px] font-semibold tracking-tight text-white">{brand}</span>
             </a>
 
             {/* ---- Center links (desktop) -------------------------------- */}
@@ -216,8 +212,8 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
               ONE action, and it is the tool. There is deliberately no "Log in"
               beside it: nothing here is behind an account, so a sign-in link
               would promise a door that does not exist and imply the product
-              keeps something of yours. The page says "no signup wall" twice
-              further down — a login control in the header contradicts both.
+              keeps something of yours. Two sections further down disown a
+              signup outright; a login control here contradicts both.
             */}
             <div className="flex items-center gap-2">
               <a
@@ -243,21 +239,40 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
           </nav>
 
           {/* ---- Mobile drawer ------------------------------------------- */}
-          {open && (
-            <ul className="mt-3 grid gap-1 border-t border-white/10 pt-3 lg:hidden">
-              {links.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-xl px-4 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+          {/*
+            Collapse rather than a bare `open &&`: the links used to appear at
+            full height on the first paint, which reads as a jump rather than an
+            opening. It eases grid-template-rows to the list's own height and
+            holds the element through the closing animation, so shutting the
+            drawer is the same movement reversed. lg:hidden lives on the wrapper
+            so the desktop layout never mounts it.
+
+            The border and top padding are INSIDE the collapsing element. On the
+            <ul> they would sit outside the animated track and paint a stray
+            divider under a closed header.
+          */}
+          <div className="lg:hidden">
+            <Collapse open={open}>
+              <ul className="mt-3 grid gap-1 border-t border-white/10 pt-3">
+                {links.map((link, i) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      /* Each link fades up a beat after the one above it, so the
+                         list resolves in sequence instead of arriving as a block.
+                         Staggered off the panel's own 300ms, short enough that the
+                         last item still lands with it. */
+                      style={{ animationDelay: `${60 + i * 55}ms` }}
+                      className="block animate-rise-in rounded-xl px-4 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Collapse>
+          </div>
         </GlassPanel>
       </div>
     </header>
@@ -328,12 +343,15 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
             is where the reference gets its metallic type. `pb-1` because a
             clipped gradient crops descenders flush at the box edge. */}
         <h1 className="text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-5xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl">
-          Turn any token into spendable money.
+          Every token, priced in your currency.
         </h1>
 
+        {/* Claims only what the two routes do: read prices and convert between
+            them. The earlier version sold swaps, payouts and locked rates,
+            none of which this product performs. */}
         <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/55 sm:text-lg">
-          Cross-chain swaps and crypto-to-fiat payouts on one route. Rates locked before you
-          sign. Invariant routes liquidity across 24 chains and 51 countries.
+          Live mid-market rates for 16 tokens and 20 world currencies, refreshed every 30
+          seconds. Convert in either direction, or read the whole board at once.
         </p>
 
         {/* ---- CTAs ---------------------------------------------------- */}
@@ -683,18 +701,24 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
   launchHref,
   launchLabel,
 }) => (
-  <section id="docs" className="mx-auto mb-28 w-[min(1200px,calc(100%-2rem))]">
+  <section id="get-started" className="mx-auto mb-28 w-[min(1200px,calc(100%-2rem))]">
     <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.015] px-8 py-20 text-center backdrop-blur-sm sm:px-16">
       <div
         className="pointer-events-none absolute left-1/2 top-0 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(232,232,236,0.16),transparent_70%)] blur-3xl"
         aria-hidden
       />
+      {/*
+        Copy describes what the two buttons below actually do. The previous
+        version promised a wallet connect and a payout account, neither of
+        which exists: both routes are read-only price tools that ask for
+        nothing, so the pitch is that there is no setup at all.
+      */}
       <h2 className="relative text-balance bg-gradient-to-b from-white to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold tracking-[-0.03em] text-transparent sm:text-5xl">
-        Your first conversion takes under a minute.
+        Start with a number, not a signup.
       </h2>
       <p className="relative mx-auto mt-4 max-w-lg text-white/55">
-        Connect a wallet, pick a payout account, and watch the quote settle. No signup wall,
-        no minimums.
+        Pick two assets, type an amount, read the rate. 16 tokens and 20 world currencies,
+        repriced every 30 seconds. Nothing to install, nothing to connect.
       </p>
       <div className="relative mt-9 flex flex-wrap justify-center gap-3">
         <a
@@ -704,12 +728,16 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
           {launchLabel}
           <ArrowRight className="h-4 w-4" />
         </a>
+        {/* The secondary CTA points at the other tool, not at docs. There is
+            no /docs route to write about — the two things a reader can
+            actually do here are convert and check rates, so the pair of
+            buttons is the pair of tools, matching the header nav. */}
         <a
-          href="/docs"
+          href="/rates"
           className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
         >
-          <BookOpen className="h-4 w-4 text-white/60" />
-          Read the docs
+          <TrendingUp className="h-4 w-4 text-white/60" />
+          See live rates
         </a>
       </div>
     </div>
