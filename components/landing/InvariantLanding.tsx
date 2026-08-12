@@ -41,6 +41,9 @@ import { useState, type CSSProperties, type FC, type ReactNode } from "react";
 import { ArrowRight, ArrowUpDown, BookOpen, Menu, X } from "lucide-react";
 
 import GradualBlur from "./GradualBlur";
+import ScrollFloat from "./ScrollFloat";
+import ScrollPin from "./ScrollPin";
+import SmoothScroll from "./SmoothScroll";
 
 /* ==========================================================================
  * Types
@@ -463,27 +466,52 @@ const COIN_SIZES: Record<CloudCoin["size"], { box: string; mark: string }> = {
  * items of chain names read as noise in a screen reader.
  */
 const CurrencyCloud: FC = () => (
+  /*
+    The pin's wrapper carries height and nothing else, so the section element —
+    the landmark and the #currencies anchor the navbar points at — sits outside
+    it. No `overflow` on this element: it is an ancestor of a sticky child.
+  */
   <section
     id="currencies"
-    /*
-      my-* rather than more py-*: the padding is inside the box the tiles are
-      positioned against, so growing it would spread the cloud back out — the
-      opposite of pulling the marks in towards the claim. Margin adds the
-      breathing room from the hero above and the closing CTA below without
-      touching the percentage grid the tiles sit on.
-    */
-    /*
-      Every vertical value here is mobile-first and roughly halved from the
-      desktop one. The tiles are positioned as PERCENTAGES of this box, so its
-      height is also the cloud's radius — a 42rem box on a phone put ~60px of
-      dead air above the first tile and pushed the whole section a screen and a
-      half tall, with a visible gap between the hero and the first mark. 38rem
-      still clears the three-line headline at the centre.
-    */
-    className="relative isolate mx-auto my-8 grid w-[min(1200px,calc(100%-2rem))] min-h-[38rem] place-items-center overflow-hidden py-10 sm:my-28 sm:min-h-[50rem] sm:py-24"
+    className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28"
   >
-    {/* ---- Layer 1: the drifting marks --------------------------------- */}
-    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+    <ScrollPin
+      /*
+      The wrapper's only job is height, and its height is the animation's
+      pacing: 100vh of it is the scene itself and everything past that is the
+      hold. 380vh gives nearly three full viewports of scrolling for the two
+      headline lines to resolve in, which is what makes the sequence read as
+      slow rather than as things snapping in.
+
+      Mobile gets 320vh — the same sequence over a shorter distance, because
+      a phone's viewport is tall relative to its scroll speed and matching the
+      desktop figure there feels like the page has stopped responding.
+
+      motion-reduce collapses the whole thing to a single screen: with the
+      animation off there is nothing to scrub, and holding a reader in place
+      for two viewports of nothing is exactly the experience the media query
+      exists to prevent.
+    */
+      className="h-[320vh] motion-reduce:h-screen sm:h-[380vh]"
+    /*
+      overflow-hidden lives HERE, on the sticky scene, not on the wrapper —
+      an `overflow` other than visible on any ancestor of a sticky element
+      switches it off without warning. isolate keeps the -z-10 layers below
+      from escaping behind the page background.
+    */
+      sceneClassName="relative isolate grid h-screen place-items-center overflow-hidden"
+    >
+    {/*
+      ---- Layer 1: the drifting marks ---------------------------------
+      Inset from the scene's edges rather than pinned to them. The tiles are
+      positioned as percentages of this layer, and at full bleed the topmost
+      marks sat under the fixed navbar and the lowest ran off the bottom of a
+      short viewport.
+    */}
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-[6%] top-[11%] -z-10 sm:bottom-[5%] sm:top-[9%]"
+      aria-hidden
+    >
       {CLOUD_COINS.map(({ label, logo, x, y, size, tilt, drift, delay, duration, desktopOnly }) => {
         const { box, mark } = COIN_SIZES[size];
 
@@ -563,24 +591,60 @@ const CurrencyCloud: FC = () => (
     {/* max-w-3xl, sized to the headline: at sm:text-6xl "24 chains, 51
         countries" measures ~700px, and anything narrower breaks it onto a
         third line, which loses the two-line shape the section is built on. */}
+    {/*
+      Three ScrollFloat blocks that resolve in reading order while the scene is
+      pinned: the eyebrow, then the first headline line, then the second. Each
+      takes a slice of the pin's 0–1 progress, so the sequencing is a handful of
+      numbers rather than pieces of geometry.
+
+      The gap between the two headline slices is deliberate — a beat where the
+      first line sits finished before the second starts, which is what separates
+      "two things arriving in order" from "one long continuous crawl". The 0.06
+      lead-in and the 0.12 tail keep the first block from being mid-animation
+      the instant the pin engages, and let the finished pair hold on screen
+      before the scene releases.
+    */}
     <div className="relative flex max-w-3xl flex-col items-center text-center">
-      <p className="text-sm font-semibold tracking-tight text-white/55 sm:text-base">
+      <ScrollFloat
+        className="text-sm font-semibold tracking-tight text-white/55 sm:text-base"
+        from={0.06}
+        to={0.22}
+        blur={6}
+      >
         One route across
-      </p>
+      </ScrollFloat>
 
-      {/* Same brushed-silver clip as the hero headline. `pb-1` because a
-          clipped gradient crops descenders flush at the box edge. */}
-      <h2 className="mt-3 text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-6xl">
-        180+ assets
-        <br />
-        24 chains, 51 countries
+      {/*
+        The brushed-silver clip sits on each CHARACTER now rather than on the
+        h2. `background-clip: text` is not carried into a transformed
+        descendant, so with the gradient on the h2 the moving characters paint
+        as nothing and the headline disappears for the whole animation. Per
+        character the ramp runs over one line box instead of two, which is
+        within a shade of the old two-line ramp.
+
+        `pb-1` for the same reason as before: a clipped gradient crops
+        descenders flush at the box edge.
+      */}
+      <h2 className="mt-3 text-balance pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] sm:text-6xl">
+        <ScrollFloat
+          charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
+          from={0.14}
+          to={0.48}
+          blur={14}
+        >
+          180+ assets
+        </ScrollFloat>
+        <ScrollFloat
+          charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
+          from={0.56}
+          to={0.88}
+          blur={14}
+        >
+          24 chains, 51 countries
+        </ScrollFloat>
       </h2>
-
-      <p className="mt-7 max-w-md text-pretty text-sm leading-relaxed text-white/50 sm:text-base">
-        Hold whatever you hold. Every mark here settles through the same signed
-        intent, at the rate you were quoted.
-      </p>
-    </div>
+      </div>
+    </ScrollPin>
   </section>
 );
 
@@ -653,6 +717,9 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
     draw it smoothly.
   */
   <div className="relative min-h-screen bg-[#141416] font-sans antialiased selection:bg-white selection:text-[#141416]">
+    {/* Renders nothing; scoped here rather than in the root layout so smoothing
+        stays a property of this page and not of every future route. */}
+    <SmoothScroll />
     {/*
       Muted ambient washes so the page never reads as flat charcoal. All
       NEUTRAL — a cool grey top light, a warm silver from the left, a colder
