@@ -145,6 +145,61 @@ html, body { background: #141416; }
 }
 
 /*
+  Arrival transition for the tool routes.
+
+  These are ordinary page loads — /converter and /rates are Server Components,
+  and a click from the landing page swaps the whole frame in one paint. Without
+  this the new page simply appears, which after the landing page's scrolled,
+  eased everything reads as a jump-cut.
+
+  A CSS animation rather than anything in React, so the routes stay Server
+  Components: there is no state to track and nothing to hydrate for it. The
+  keyframes run on first paint and never again.
+
+  `both` holds the from-state through the delay below. Without it the header and
+  the tool would flash at full opacity for a frame before dropping back to
+  transparent to start.
+*/
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+  ease-out, not ease-in-out: the page should arrive quickly and settle, which
+  means all the deceleration and none of the wind-up. 420ms is long enough to
+  register as a transition and short enough that a reader who came here to
+  convert something is not watching it.
+*/
+.animate-page-in {
+  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/*
+  The tool itself follows the header by a beat, so the page assembles top-down
+  instead of arriving as one slab. A separate class rather than a Tailwind
+  `[animation-delay:90ms]` for the reason documented on the marquee below: this
+  file is unlayered, the shorthand above carries an implicit `animation-delay:
+  0s`, and an @layer utility cannot override it.
+*/
+.animate-page-in-delayed {
+  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in,
+  .animate-page-in-delayed {
+    animation: none;
+  }
+}
+
+/*
   The rates card's crawl on the landing page.
 
   EXACTLY -50%, and the track must hold exactly two copies of the list. At the
