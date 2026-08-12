@@ -304,7 +304,14 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
       */}
       <group rotation={[Math.PI / 2, 0, 0]}>
         <mesh ref={spinRef} scale={COIN_SCALE}>
-          <cylinderGeometry args={[1, 1, 0.14, 64]} />
+          {/*
+            96 segments rather than 64. The coin's outline IS this polygon, and
+            it is the largest curve in the scene — at 64 the flats are just
+            wide enough to read as facets along the top and bottom of the disc
+            once the edges are sharp enough to see them. Cheap at twelve coins:
+            the geometry is built once and instanced by reference.
+          */}
+          <cylinderGeometry args={[1, 1, 0.14, 96]} />
           {/*
             Cylinder material slots are ordered [wall, top cap, bottom cap].
 
@@ -355,6 +362,21 @@ const Coin: FC<CoinProps> = ({ config, face, back, edge }) => {
 const Centrepiece: FC = () => {
   const orbit = useRef<Group>(null);
 
+  /*
+    Whatever the GPU will actually give us, rather than a hard-coded 4.
+
+    Anisotropic filtering is what keeps a texture from breaking up where it is
+    viewed at a steep angle, and every texture here is seen that way for most of
+    the orbit: a coin is edge-on twice per revolution, and the reeded wall — 90
+    stripe repeats squeezed around the circumference — is never seen any other
+    way. Under-filtered, those stripes alias into crawling moiré, which reads as
+    the same "low AA" jaggedness as the silhouette does.
+
+    Capped by the driver internally, so asking for the maximum is safe: 16 on
+    desktop, often 4 on mobile, and the call returns the real ceiling either way.
+  */
+  const maxAnisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy());
+
   /**
    * One texture per symbol, shared across every coin that uses it — six
    * textures for the whole ring rather than one per coin. Built in a memo
@@ -372,12 +394,12 @@ const Centrepiece: FC = () => {
 
       const front = new CanvasTexture(canvas);
       front.colorSpace = SRGBColorSpace;
-      front.anisotropy = 4;
+      front.anisotropy = maxAnisotropy;
       faces.push(front);
 
       const back = new CanvasTexture(canvas);
       back.colorSpace = SRGBColorSpace;
-      back.anisotropy = 4;
+      back.anisotropy = maxAnisotropy;
       /*
         three's cylinder caps are UV-mirrored against each other: generateCap
         multiplies the V coordinate by +1 on the top and -1 on the bottom. So
@@ -394,7 +416,7 @@ const Centrepiece: FC = () => {
     }
 
     return { faces, backs };
-  }, []);
+  }, [maxAnisotropy]);
 
   const edge = useMemo<Texture>(() => {
     const texture = new CanvasTexture(drawReeding());
@@ -402,8 +424,12 @@ const Centrepiece: FC = () => {
     texture.wrapS = RepeatWrapping;
     // Repeat around the circumference only; the wall is one pixel tall in V.
     texture.repeat.set(90, 1);
+    // The worst case on the coin: 90 stripe repeats around a wall that is
+    // almost always seen at a grazing angle. This is the one that shimmers
+    // without it.
+    texture.anisotropy = maxAnisotropy;
     return texture;
-  }, []);
+  }, [maxAnisotropy]);
 
   // Canvas textures are not managed by three's loader cache, so nothing else
   // will ever free them. Without this, every hot reload leaks another set.
@@ -551,7 +577,23 @@ const HeroScene: FC = () => {
         className="absolute inset-0"
         style={{ opacity: contextLost ? 0 : 1, transition: "opacity 300ms" }}
         camera={{ position: [0, 0, 8.5], fov: 45 }}
-        dpr={[1, 1.5]}
+        /*
+          Capped at the display's own density, not below it.
+
+          This is the jagged-edge fix. `antialias: true` gives MSAA on the
+          default framebuffer, but MSAA only resolves the samples it is given —
+          at a 1.5 ceiling a 2x or 3x screen was rendering the scene at roughly
+          half its native pixels and letting the browser upscale, so the coins'
+          circular silhouettes arrived pre-stepped and no amount of multisampling
+          could put that back.
+
+          Still a ceiling rather than `window.devicePixelRatio` unbounded: a 3x
+          phone would otherwise render nine times the pixels of a 1x screen, and
+          the fullscreen ray shader in this canvas is priced per pixel. 2 is
+          where the returns flatten anyway — beyond it the samples are smaller
+          than the panel can resolve.
+        */
+        dpr={[1, 2]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
           const canvas = gl.domElement;
