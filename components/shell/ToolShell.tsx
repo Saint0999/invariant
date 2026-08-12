@@ -20,7 +20,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, House } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
 /** The tool routes, in the order they appear in the header. */
@@ -74,15 +74,29 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-white via-[#E4E4E7] to-[#A1A1AA] ring-1 ring-inset ring-white/40">
               <ArrowUpDown className="h-4 w-4 text-[#141416]" strokeWidth={2.75} />
             </span>
-            <span className="flex flex-col leading-none">
-              <span className="text-[15px] font-semibold tracking-tight text-white">Invariant</span>
-              <span className="mt-2 hidden text-[10px] uppercase tracking-[0.18em] text-white/40 sm:block">
-                Convert · Bridge · Cash out
-              </span>
-            </span>
+            <span className="text-[15px] font-semibold tracking-tight text-white">Invariant</span>
           </Link>
 
-          <nav className="flex items-center gap-1" aria-label="Tools">
+          {/* Tighter gaps below sm. Three items plus the brand overflow a
+              375px bar at the roomy spacing, and the padding is the cheapest
+              thing to give up — the labels all stay. */}
+          <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="Tools">
+            {/* Home is a way out of the tools, not one of them, so it sits
+                before the divider and never takes the selected treatment. The
+                brand mark links home too, but that reads as a logo rather than
+                a control — on these routes the way back needs to be visible. */}
+            <Link
+              href="/"
+              className="flex items-center gap-2 rounded-full px-2 py-2 text-sm font-semibold text-white/50 transition-colors hover:text-white sm:px-4"
+            >
+              <House className="h-4 w-4" strokeWidth={2.25} />
+              {/* Label drops on narrow screens; the icon carries it there, so
+                  the accessible name comes from the sr-only copy either way. */}
+              <span className="sr-only sm:not-sr-only">Home</span>
+            </Link>
+
+            <span className="mx-0.5 h-5 w-px bg-white/10 sm:mx-1" aria-hidden />
+
             {TOOL_LINKS.map(({ href, label }) => {
               const current = href === active;
 
@@ -92,7 +106,7 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
                   href={href}
                   aria-current={current ? "page" : undefined}
                   className={
-                    "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors sm:px-4 " +
+                    "rounded-full px-3 py-2 text-sm font-semibold transition-colors sm:px-4 " +
                     (current
                       ? "bg-white/[0.1] text-white"
                       : "text-white/50 hover:text-white")

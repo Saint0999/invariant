@@ -25,7 +25,7 @@ import { useRates } from "@/components/converter/useRates";
 import { ASSETS, ASSETS_BY_CODE, convert, type Asset } from "@/lib/converter/assets";
 import { formatAge, formatRate } from "@/lib/converter/format";
 
-import Collapse from "./Collapse";
+import Collapse from "@/components/ui/Collapse";
 import PriceChart from "./PriceChart";
 import { useHistory } from "./useHistory";
 
