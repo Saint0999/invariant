@@ -534,7 +534,7 @@ const MarqueeRow: FC<{
 
       <div className="ml-auto text-right">
         <p className="text-sm font-semibold tabular-nums text-white/85">
-          {price === null ? "—" : `${base.symbol}${formatRate(price)}`}
+          {price === null ? "n/a" : `${base.symbol}${formatRate(price)}`}
         </p>
         <Change value={change} />
       </div>
@@ -548,7 +548,7 @@ const MarqueeRow: FC<{
  * every stablecoin shows a "-0.00%" that reads as a loss.
  */
 const Change: FC<{ value: number | null }> = ({ value }) => {
-  if (value === null) return <span className="text-[11px] text-white/25">—</span>;
+  if (value === null) return <span className="text-[11px] text-white/25">n/a</span>;
 
   const flat = Math.abs(value) < 0.005;
   const up = value >= 0;

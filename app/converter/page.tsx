@@ -14,7 +14,7 @@ import Converter from "@/components/converter/Converter";
 import ToolShell from "@/components/shell/ToolShell";
 
 export const metadata: Metadata = {
-  title: "Converter — Invariant",
+  title: "Converter · Invariant",
   description:
     "Convert any cryptocurrency into another, or straight into dollars, euros, pounds and more, at live market rates.",
 };

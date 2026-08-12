@@ -77,14 +77,19 @@ export interface InvariantLandingProps {
 }
 
 /*
-  No "Features" entry: the section it pointed at (#features) is gone, replaced
-  by the currency cloud. An anchor to an id that no longer exists is a link that
-  silently does nothing, so the entry went with the section.
+  Two of these are ROUTES, not anchors. "Security" and "Docs" pointed at a
+  footer and a closing pitch — a nav slot spent sending the reader to the bottom
+  of the page they are already on. The two tools are the product, and they were
+  reachable only from the hero's buttons and the preview cards further down.
+
+  "Currencies" stays an anchor, but see CurrencyCloud for where it lands: the
+  section it names is a scroll-scrubbed animation, and the top of it is a blank
+  screen until the reader scrolls.
 */
 const DEFAULT_NAV: NavLink[] = [
   { label: "Currencies", href: "#currencies" },
-  { label: "Security", href: "#security" },
-  { label: "Docs", href: "#docs" },
+  { label: "Convert", href: "/converter" },
+  { label: "Live rates", href: "/rates" },
 ];
 
 /**
@@ -207,14 +212,14 @@ const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
             </ul>
 
             {/* ---- Actions ----------------------------------------------- */}
+            {/*
+              ONE action, and it is the tool. There is deliberately no "Log in"
+              beside it: nothing here is behind an account, so a sign-in link
+              would promise a door that does not exist and imply the product
+              keeps something of yours. The page says "no signup wall" twice
+              further down — a login control in the header contradicts both.
+            */}
             <div className="flex items-center gap-2">
-              <a
-                href="/login"
-                className="hidden rounded-full px-4 py-2 text-sm text-white/60 transition-colors hover:text-white sm:block"
-              >
-                Log in
-              </a>
-
               <a
                 href={launchHref}
                 className="group relative inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#141416] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:px-5"
@@ -476,10 +481,34 @@ const CurrencyCloud: FC = () => (
     the landmark and the #currencies anchor the navbar points at — sits outside
     it. No `overflow` on this element: it is an ancestor of a sticky child.
   */
-  <section
-    id="currencies"
-    className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28"
-  >
+  <section className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28">
+    {/*
+      THE ANCHOR IS NOT THE TOP OF THE SECTION.
+
+      Jumping to the section element landed the reader at the start of the pin,
+      where the scene is legitimately empty — the two headline lines have not
+      begun resolving yet — so the nav appeared to link to a blank screen that
+      only filled in if you happened to keep scrolling.
+
+      This marker sits at the scroll offset where the sequence has finished, so
+      the jump arrives on the resolved pair. The number is derived, not guessed:
+      ScrollPin's progress is -wrapperTop / (wrapperHeight - 100vh), so landing
+      at progress p means putting the viewport top p × travel into the wrapper.
+      The second line completes at 0.88 and the pin holds to 1.0, so 0.92 is
+      just past the finish with a little of the hold to spare:
+
+        desktop  0.92 × (380vh - 100vh) = 257.6vh
+        mobile   0.92 × (320vh - 100vh) = 202.4vh
+
+      Keep these in step with the wrapper heights below and with ScrollFloat's
+      `to` value. motion-reduce pins it back to the top, where that variant
+      collapses the wrapper to one screen and there is no travel to offset into.
+    */}
+    <span
+      id="currencies"
+      className="pointer-events-none absolute left-0 top-[202.4vh] motion-reduce:top-0 sm:top-[257.6vh]"
+      aria-hidden
+    />
     <ScrollPin
       /*
       The wrapper's only job is height, and its height is the animation's
