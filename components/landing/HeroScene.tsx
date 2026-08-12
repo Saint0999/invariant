@@ -61,6 +61,7 @@ import { Environment, Lightformer } from "@react-three/drei";
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import type { Group, Mesh, Texture } from "three";
 import LightRays from "./LightRays";
+import SceneGlow from "./SceneGlow";
 
 /* ------------------------------------------------------------------------ */
 /* Coin constants                                                            */
@@ -532,6 +533,39 @@ const Rig: FC = () => {
 };
 
 /* ------------------------------------------------------------------------ */
+/* First-frame probe                                                         */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Reports when the scene has actually drawn something, so the canvas can be
+ * faded up rather than switched on.
+ *
+ * WHY NOT onCreated
+ * That fires when the renderer exists, which is well before anything is on it:
+ * the twelve coin textures are still being drawn to 2D canvases in a memo, and
+ * `<Environment frames={1}>` has not baked yet. Fading in there shows an empty
+ * frame, then pops the coins in at full opacity anyway — the bug this is meant
+ * to fix, moved earlier.
+ *
+ * The SECOND frame rather than the first, for the environment specifically:
+ * these materials are pure metal with no diffuse term, so on the frame before
+ * the light box is baked the coins reflect nothing and render near-black.
+ * Waiting one more frame means what fades in is lit.
+ *
+ * Renders nothing; it exists to hold a useFrame inside the Canvas tree.
+ */
+const FirstFrame: FC<{ onPainted: () => void }> = ({ onPainted }) => {
+  const frames = useRef(0);
+
+  useFrame(() => {
+    frames.current += 1;
+    if (frames.current === 2) onPainted();
+  });
+
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
 /* Canvas                                                                    */
 /* ------------------------------------------------------------------------ */
 
@@ -546,6 +580,13 @@ const HeroScene: FC = () => {
   // `webglcontextrestored` puts the scene back.
   const [contextLost, setContextLost] = useState<boolean>(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  /**
+   * Held false until the scene has drawn a lit frame, so the coins fade up over
+   * the glow instead of appearing on it. Set from inside the Canvas tree — see
+   * FirstFrame for why mount is too early a signal.
+   */
+  const [painted, setPainted] = useState<boolean>(false);
 
   /**
    * The `webglcontextlost` event only fires for losses that happen AFTER the
@@ -567,15 +608,26 @@ const HeroScene: FC = () => {
 
   return (
     <div className="absolute inset-0">
-      {/* Always-present ambient glow. Doubles as the loading state and as the
-          fallback whenever the canvas cannot paint. */}
-      <div className="absolute inset-0 grid place-items-center" aria-hidden>
-        <div className="h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(232,232,236,0.14),rgba(148,152,162,0.07)_45%,transparent_72%)] blur-3xl" />
-      </div>
+      {/* Always-present ambient glow, and the thing the coins fade up over. The
+          identical element is what next/dynamic renders while this module is
+          still downloading, so mounting the scene changes nothing on screen. */}
+      <SceneGlow />
 
       <Canvas
         className="absolute inset-0"
-        style={{ opacity: contextLost ? 0 : 1, transition: "opacity 300ms" }}
+        /*
+          Two states share one gate. Both want the same thing — reveal the
+          canvas only while it has a lit picture on it — so a lost context and a
+          not-yet-painted one are the same case here.
+
+          700ms in, 300ms out. Arriving is the slower of the two on purpose:
+          this is a fade the reader is meant to not quite notice, while a lost
+          context should get out of the way promptly and hand back to the glow.
+        */
+        style={{
+          opacity: contextLost || !painted ? 0 : 1,
+          transition: `opacity ${painted && !contextLost ? 700 : 300}ms ease-out`,
+        }}
         camera={{ position: [0, 0, 8.5], fov: 45 }}
         /*
           Capped at the display's own density, not below it.
@@ -606,6 +658,8 @@ const HeroScene: FC = () => {
           canvas.addEventListener("webglcontextrestored", () => setContextLost(false));
         }}
       >
+        <FirstFrame onPainted={() => setPainted(true)} />
+
         <ambientLight intensity={0.4} />
         <directionalLight position={[5, 6, 4]} intensity={2} color="#ffffff" />
         {/* Warm key from below-left, cool fill from above-right. Same trick as

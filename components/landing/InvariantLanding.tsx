@@ -42,6 +42,8 @@ import { ArrowRight, ArrowUpDown, Menu, TrendingUp, X } from "lucide-react";
 
 import Collapse from "@/components/ui/Collapse";
 import GradualBlur from "./GradualBlur";
+import SceneGlow from "./SceneGlow";
+import Starfield from "./Starfield";
 import GraphDemo from "./GraphDemo";
 import ScrollFloat from "./ScrollFloat";
 import ScrollPin from "./ScrollPin";
@@ -111,17 +113,16 @@ const DEFAULT_NETWORKS: SupportedNetwork[] = [
  * 3D scene — code-split, client-only
  * ========================================================================== */
 
+/*
+  The loading state is the SAME wash HeroScene renders under its canvas, so the
+  moment the chunk lands nothing on screen changes — the scene then fades the
+  coins up over it. See SceneGlow.tsx.
+*/
 const HeroScene = dynamic(() => import("./HeroScene"), {
   ssr: false,
-  loading: () => <SceneFallback />,
+  loading: () => <SceneGlow />,
 });
 
-/** CSS-only stand-in so the hero never reflows when the WebGL bundle lands. */
-const SceneFallback: FC = () => (
-  <div className="absolute inset-0 grid place-items-center" aria-hidden>
-    <div className="h-[38rem] w-[38rem] animate-pulse rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(226,232,240,0.13),rgba(148,163,184,0.06)_45%,transparent_72%)] blur-3xl" />
-  </div>
-);
 
 /* ==========================================================================
  * Primitives
@@ -173,8 +174,17 @@ interface NavbarProps {
 const Navbar: FC<NavbarProps> = ({ brand, links, launchHref, launchLabel }) => {
   const [open, setOpen] = useState<boolean>(false);
 
+  /*
+    animate-page-in: fades in on arrival, with the hero copy following a beat
+    later, so a click back to home matches the way the tool routes arrive.
+
+    The class goes on the fixed header ITSELF, never on a wrapper around it. A
+    transform on an ancestor makes that ancestor the containing block for any
+    fixed descendant, so a wrapper here would tack the navbar to the top of the
+    hero and scroll it away with the page.
+  */
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className="fixed inset-x-0 top-0 z-50 animate-page-in">
       <div className="mx-auto mt-4 w-[min(1200px,calc(100%-2rem))]">
         <GlassPanel className="rounded-2xl px-4 py-3 sm:px-5">
           <nav className="flex items-center justify-between gap-6" aria-label="Main">
@@ -338,7 +348,11 @@ const Hero: FC<HeroProps> = ({ launchHref, networks }) => (
     />
 
     {/* ---- Layer 3: content -------------------------------------------- */}
-    <div className="relative flex max-w-3xl flex-col items-center text-center">
+    {/* Copy only. The orbit behind it is left alone: the WebGL bundle lands
+        whenever it lands, so a fade tied to this mount would run before the
+        canvas exists and finish before it arrives. SceneFallback covers that
+        gap instead. */}
+    <div className="animate-page-in-delayed relative flex max-w-3xl flex-col items-center text-center">
         {/* Brushed-silver headline: a top-to-bottom white → #9A9AA4 clip, which
             is where the reference gets its metallic type. `pb-1` because a
             clipped gradient crops descenders flush at the box edge. */}
@@ -455,25 +469,56 @@ interface CloudCoin {
   which stays clear for the headline. Everything else is judged by eye.
 */
 const CLOUD_COINS: CloudCoin[] = [
-  { label: "Solana", logo: "/sol.svg", x: "44%", y: "7%", size: "sm", tilt: -5, drift: [6, -14], delay: 2.6, duration: 15 },
-  // dx is positive to match Bitcoin's: on a phone these two are only ~12px
-  // apart at the closest, and opposing drifts would walk them into each other.
-  { label: "Ethereum", logo: "/eth.svg", x: "33%", y: "22%", size: "md", tilt: 6, drift: [6, -10], delay: 1.4, duration: 18 },
-  { label: "Tether", logo: "/usdt.svg", x: "66%", y: "24%", size: "sm", tilt: 9, drift: [5, -16], delay: 0.8, duration: 13.5 },
-  { label: "BNB", logo: "/bnb.svg", x: "87%", y: "19%", size: "lg", tilt: -6, drift: [-9, -9], delay: 2, duration: 20 },
-  { label: "XRP", logo: "/xrp.svg", x: "79%", y: "41%", size: "sm", tilt: 7, drift: [8, -12], delay: 3.2, duration: 16.5, desktopOnly: true },
-  { label: "Base", logo: "/base.svg", x: "93%", y: "63%", size: "sm", tilt: 5, drift: [-6, -15], delay: 1.1, duration: 14, desktopOnly: true },
+  { label: "Solana", logo: "/sol.svg", x: "44%", y: "7%", size: "sm", tilt: -5, drift: [11, -26], delay: 2.6, duration: 11.5 },
+  /*
+    LOCKED TO BITCOIN: identical drift, delay and duration, which is why these
+    two are the only tiles in the cloud sharing a phase.
+
+    Matching dx alone was enough at the old amplitude. It is not any more. Each
+    tile travels from rest to peak and back, so the worst case between two of
+    them is one at full extension while the other sits at zero — about 26px
+    here, against a resting gap of ~19px once both are drawn at their phone
+    sizes. Independent timings guarantee that moment arrives eventually; it just
+    takes until their periods drift out of step, which is why a short look at
+    the page never catches it.
+
+    Identical timing makes the relative displacement exactly zero instead of
+    merely small, so the pair holds its gap forever at full amplitude. Two tiles
+    in step out of thirteen is not the synchronised-sheet problem the keyframes
+    warn about — that needs neighbours moving together across the whole cloud.
+  */
+  { label: "Ethereum", logo: "/eth.svg", x: "33%", y: "22%", size: "md", tilt: 6, drift: [13, -23], delay: 0, duration: 15.5 },
+  { label: "Tether", logo: "/usdt.svg", x: "66%", y: "24%", size: "sm", tilt: 9, drift: [8, -28], delay: 0.8, duration: 10.5 },
+  // Same trap as Ethereum/Bitcoin, and it only bites on a phone: this pair is
+  // ~25px apart there once BNB is drawn at its large size, so the opposing dx
+  // this used to carry closed the gap completely at the wider amplitude. Both
+  // now drift right, which leaves ~4px of relative travel between them.
+  { label: "BNB", logo: "/bnb.svg", x: "87%", y: "19%", size: "lg", tilt: -6, drift: [12, -20], delay: 2, duration: 15 },
+  { label: "XRP", logo: "/xrp.svg", x: "79%", y: "41%", size: "sm", tilt: 7, drift: [14, -23], delay: 3.2, duration: 12.5, desktopOnly: true },
+  { label: "Base", logo: "/base.svg", x: "93%", y: "63%", size: "sm", tilt: 5, drift: [-11, -27], delay: 1.1, duration: 11, desktopOnly: true },
   // desktopOnly for the same reason as USD Coin below: with the box shortened
   // on mobile this one lands on the last two lines of the support paragraph.
-  { label: "Avalanche", logo: "/avax.svg", x: "68%", y: "73%", size: "md", tilt: 7, drift: [7, -11], delay: 1.2, duration: 17, desktopOnly: true },
-  { label: "Arbitrum", logo: "/arb.svg", x: "83%", y: "90%", size: "md", tilt: -7, drift: [-8, -13], delay: 2.9, duration: 19 },
-  { label: "Polygon", logo: "/matic.svg", x: "52%", y: "93%", size: "sm", tilt: -4, drift: [9, -8], delay: 2.3, duration: 14.5 },
-  { label: "Cardano", logo: "/ada.svg", x: "34%", y: "77%", size: "sm", tilt: 6, drift: [-5, -16], delay: 3.6, duration: 12.5 },
-  { label: "Dogecoin", logo: "/doge.svg", x: "21%", y: "88%", size: "lg", tilt: -9, drift: [6, -10], delay: 1.9, duration: 18.5 },
+  { label: "Avalanche", logo: "/avax.svg", x: "68%", y: "73%", size: "md", tilt: 7, drift: [13, -22], delay: 1.2, duration: 13, desktopOnly: true },
+  { label: "Arbitrum", logo: "/arb.svg", x: "83%", y: "90%", size: "md", tilt: -7, drift: [-14, -24], delay: 2.9, duration: 14.5 },
+  { label: "Polygon", logo: "/matic.svg", x: "52%", y: "93%", size: "sm", tilt: -4, drift: [15, -19], delay: 2.3, duration: 11 },
+  { label: "Cardano", logo: "/ada.svg", x: "34%", y: "77%", size: "sm", tilt: 6, drift: [-10, -28], delay: 3.6, duration: 9.5 },
+  /*
+    The one tile that drifts DOWN, and it earns its place twice over.
+
+    Cardano sits just above it and the two already overlap horizontally at rest,
+    so the ~21px between them vertically is the entire separation — and this
+    tile rising 21px closed exactly that. Falling instead opens the gap at both
+    extremes rather than shutting it at one.
+
+    It also breaks the one axis every other tile shares. The keyframes note that
+    per-tile dx is what stops the cloud reading as a single sheet; a tile moving
+    against the grain does more for that than any amount of horizontal jitter.
+  */
+  { label: "Dogecoin", logo: "/doge.svg", x: "21%", y: "88%", size: "lg", tilt: -9, drift: [11, 18], delay: 1.9, duration: 14 },
   // desktopOnly: on a 390px screen the support paragraph runs the full width
   // and this tile lands underneath the second line of it.
-  { label: "USD Coin", logo: "/usdc.svg", x: "6%", y: "61%", size: "md", tilt: 8, drift: [-7, -14], delay: 0.4, duration: 16, desktopOnly: true },
-  { label: "Bitcoin", logo: "/btc.svg", x: "12%", y: "25%", size: "lg", tilt: -8, drift: [8, -11], delay: 0, duration: 21 },
+  { label: "USD Coin", logo: "/usdc.svg", x: "6%", y: "61%", size: "md", tilt: 8, drift: [-12, -25], delay: 0.4, duration: 12, desktopOnly: true },
+  { label: "Bitcoin", logo: "/btc.svg", x: "12%", y: "25%", size: "lg", tilt: -8, drift: [13, -23], delay: 0, duration: 15.5 },
 ];
 
 /** Tile box + inner mark, kept in step so the mark never crowds its padding. */
@@ -703,6 +748,14 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
 }) => (
   <section id="get-started" className="mx-auto mb-28 w-[min(1200px,calc(100%-2rem))]">
     <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.015] px-8 py-20 text-center backdrop-blur-sm sm:px-16">
+      {/*
+        Stars behind the copy. First, so it is the bottom layer of the card;
+        every element after it carries `relative`, which is what lifts the text
+        above it without needing a z-index on anything. The card's own
+        overflow-hidden keeps the field inside the rounded corners.
+      */}
+      <Starfield />
+
       <div
         className="pointer-events-none absolute left-1/2 top-0 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(232,232,236,0.16),transparent_70%)] blur-3xl"
         aria-hidden
