@@ -686,9 +686,10 @@ const CurrencyCloud: FC = () => (
     />
 
     {/* ---- Layer 3: the claim ------------------------------------------ */}
-    {/* max-w-3xl, sized to the headline: at sm:text-6xl "24 chains, 51
-        countries" measures ~700px, and anything narrower breaks it onto a
-        third line, which loses the two-line shape the section is built on. */}
+    {/* max-w-3xl, sized to the headline: at sm:text-6xl "16 tokens, 20
+        currencies" measures close to the same width as the line above it,
+        and anything narrower breaks it onto a third line, which loses the
+        two-line shape the section is built on. */}
     {/*
       The two headline lines resolve in reading order while the scene is pinned,
       each taking a slice of the pin's 0–1 progress, so the sequencing is four
@@ -727,7 +728,7 @@ const CurrencyCloud: FC = () => (
           to={0.44}
           blur={14}
         >
-          180+ assets
+          36 assets
         </ScrollFloat>
         <ScrollFloat
           charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
@@ -735,7 +736,7 @@ const CurrencyCloud: FC = () => (
           to={0.88}
           blur={14}
         >
-          24 chains, 51 countries
+          16 tokens, 20 currencies
         </ScrollFloat>
       </h2>
       </div>
@@ -869,28 +870,14 @@ const InvariantLanding: FC<InvariantLandingProps> = ({
         itself keeps running. Shrinking this below 64px puts them back under it.
       */}
       <footer id="security" className="border-t border-white/[0.08] pb-24 pt-10">
-        <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-4 text-sm text-white/40 sm:flex-row">
-          {/* Copyright and attribution ride together on the left so the legal
-              links keep the right edge to themselves — three items spread
-              across a row read as three links, and the fourth would have been
-              the one that isn't. */}
-          <div className="flex flex-col items-center gap-1 sm:items-start">
-            <span>
-              © {new Date().getFullYear()} {brand} Labs. Non-custodial. Audited.
-            </span>
-            <RateAttribution />
-          </div>
-          <div className="flex gap-6">
-            <a href="/terms" className="transition-colors hover:text-white/70">
-              Terms
-            </a>
-            <a href="/privacy" className="transition-colors hover:text-white/70">
-              Privacy
-            </a>
-            <a href="/status" className="transition-colors hover:text-white/70">
-              Status
-            </a>
-          </div>
+        {/* No legal links: there are no /terms, /privacy or /status pages behind
+            them, and a footer link to nowhere is worse than no link. Just the
+            copyright and where the rates come from. */}
+        <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center gap-1 text-center text-sm text-white/40">
+          <span>
+            © {new Date().getFullYear()} {brand} Labs. Non-custodial.
+          </span>
+          <RateAttribution />
         </div>
       </footer>
     </div>

@@ -130,7 +130,7 @@ const ToolShell: FC<ToolShellProps> = ({ active, children }) => (
             twice — and the per-tool notes that remain are about what the number
             means (mid-market, fee-exclusive), not where it came from. */}
         <div className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-col items-center justify-between gap-2 text-sm text-white/35 sm:flex-row">
-          <span>© {new Date().getFullYear()} Invariant Labs. Non-custodial. Audited.</span>
+          <span>© {new Date().getFullYear()} Invariant Labs. Non-custodial.</span>
           <RateAttribution />
         </div>
       </footer>

@@ -43,8 +43,9 @@ Both are read-only tools with no login and nothing to install or connect.
 
 ## Evidence on Hand
 
-- The footer currently reads "Non-custodial. Audited." — **non-custodial is true** (there is no account or wallet-connect flow to custody anything through), but **there is no completed security audit**. "Audited" is unconfirmed placeholder copy, not evidence, and future work must not treat it as a claim to build on or repeat elsewhere. Flagged as a copy fix to make (drop the word or replace it with something true) — not fixed as part of this init pass.
+- There is no completed security audit. The footer's earlier "Audited" claim (flagged as unconfirmed during init) was corrected to just "Non-custodial." during a 2026-08-16 polish pass, in both `InvariantLanding.tsx` and `ToolShell.tsx`. Future work must not reintroduce an audited claim without a real audit to point to.
 - No testimonials, customer logos, press mentions, or usage numbers exist; none should be fabricated.
+- The landing page's "One route across" section briefly claimed "180+ assets" / "24 chains, 51 countries" — leftover copy from an earlier, more expansive pitch that contradicted the hero and closing CTA on the same page. Corrected to the real counts ("36 assets" / "16 tokens, 20 currencies") during the same polish pass. The footer's `/terms`, `/privacy`, and `/status` links were removed at the same time — none of those pages exist.
 
 ## Product Principles
 
