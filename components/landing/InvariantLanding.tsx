@@ -540,17 +540,6 @@ const COIN_SIZES: Record<CloudCoin["size"], { box: string; mark: string }> = {
  * items of chain names read as noise in a screen reader.
  */
 const CurrencyCloud: FC = () => {
-  /*
-    Mirrors ScrollPin's own one-time `settled` flip via its `onSettle` prop —
-    this component cannot read that state directly because the anchor below
-    is a SIBLING of <ScrollPin>, not a descendant, so PinContext never reaches
-    it. Once the pin has released for good, the anchor jump target simplifies
-    to the top of the section: there is no more empty start-of-pin frame to
-    route around, because the section is just an ordinary, already-resolved
-    screen at that point. See the anchor's own comment for the pre-settle case.
-  */
-  const [settled, setSettled] = useState(false);
-
   return (
     /*
       The pin's wrapper carries height and nothing else, so the section element —
@@ -559,7 +548,7 @@ const CurrencyCloud: FC = () => {
     */
     <section className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28">
       {/*
-        THE ANCHOR IS NOT THE TOP OF THE SECTION — UNTIL THE PIN HAS SETTLED.
+        THE ANCHOR IS NOT THE TOP OF THE SECTION.
 
         Jumping to the section element landed the reader at the start of the pin,
         where the scene is legitimately empty — the two headline lines have not
@@ -579,22 +568,13 @@ const CurrencyCloud: FC = () => {
         Keep these in step with the wrapper heights below and with ScrollFloat's
         `to` value. motion-reduce pins it back to the top, where that variant
         collapses the wrapper to one screen and there is no travel to offset into.
-
-        Once settled, none of that applies any more: ScrollPin has already
-        collapsed to a single ordinary screen with the sequence already resolved,
-        so top-0 lands the jump on exactly the same finished frame the deep
-        offset used to reach the hard way.
       */}
       <span
         id="currencies"
-        className={
-          "pointer-events-none absolute left-0 " +
-          (settled ? "top-0" : "top-[202.4vh] motion-reduce:top-0 sm:top-[257.6vh]")
-        }
+        className="pointer-events-none absolute left-0 top-[202.4vh] motion-reduce:top-0 sm:top-[257.6vh]"
         aria-hidden
       />
       <ScrollPin
-        onSettle={() => setSettled(true)}
           /*
         The wrapper's only job is height, and its height is the animation's
         pacing: 100vh of it is the scene itself and everything past that is the
