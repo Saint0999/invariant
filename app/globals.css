@@ -233,8 +233,28 @@ html, body { background: #141416; }
   }
 }
 
+/*
+  `backwards` is required, and it is the fill-mode hazard documented on
+  .animate-page-in in reverse.
+
+  The delay is dead time in which no animation applies, so without a fill the
+  band renders at its own untransformed position for the whole wait — parked
+  dead centre of the pill, which is the permanent bright smear these keyframes
+  exist to avoid. `backwards` holds the 0% frame instead, off the left edge and
+  behind the clip, so the pill is clean until the sweep starts.
+
+  `forwards` stays off, as everywhere else in this file. It would be inert here
+  anyway (the animation is infinite and never reaches a final fill), and the
+  0%/100% frames are both transformed, so there is no identity-matrix trap of
+  the kind that flattened the glass surfaces.
+
+  The delay in the shorthand is a FALLBACK. LiveBadge sets animation-delay
+  inline, and an inline longhand beats the shorthand's value from this class —
+  the same arrangement Collapse uses for animation-duration. Keep the two
+  numbers in step so this file reads honestly on its own.
+*/
 .animate-sheen {
-  animation: sheen 4.5s cubic-bezier(0.4, 0, 0.2, 1) 900ms infinite;
+  animation: sheen 4.5s cubic-bezier(0.4, 0, 0.2, 1) 900ms infinite backwards;
 }
 
 /*
