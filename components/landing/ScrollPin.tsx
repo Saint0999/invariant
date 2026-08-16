@@ -23,6 +23,14 @@
  * Progress is pushed to subscribers rather than held in state: at 60fps a
  * `useState` here would re-render the whole subtree on every frame, and the
  * consumers only ever want to write to `style`.
+ *
+ * ONE-TIME PIN
+ * The hold itself is meant to be watched once, not re-frozen every time the
+ * reader scrolls back through this stretch of the page. The first time
+ * progress reaches 1, `settled` flips permanently: the tall wrapper collapses
+ * to an ordinary one-screen block, the sticky hold drops, and scroll
+ * measurement stops. See the settle effect and the compensation effect below
+ * for how that collapse avoids visibly yanking the rest of the page.
  */
 
 import {
@@ -32,6 +40,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 
@@ -59,12 +68,43 @@ export interface ScrollPinProps {
   className?: string;
   /** Classes for the sticky, one-viewport-high scene. */
   sceneClassName?: string;
+  /**
+   * Fires once, the moment progress first reaches 1 — the pin is about to
+   * release for good. `usePinProgress`'s `current()` already reports this to
+   * anything inside the pin; this is for a consumer OUTSIDE it, like the
+   * landing page's `#currencies` anchor, which sits beside `<ScrollPin>` as a
+   * sibling rather than a descendant and so cannot read its context.
+   */
+  onSettle?: () => void;
 }
 
-const ScrollPin = ({ children, className = "", sceneClassName = "" }: ScrollPinProps) => {
+const ScrollPin = ({ children, className = "", sceneClassName = "", onSettle }: ScrollPinProps) => {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const listeners = useRef<Set<Listener>>(new Set());
   const progress = useRef(0);
+
+  /*
+    RELEASING FOR GOOD, NOT JUST HOLDING STILL AT THE END.
+
+    Reaching progress 1 already means the reader has watched the pinned
+    sequence resolve in full — ScrollFloat itself now latches there and stops
+    re-animating on a later pass, but the SCROLL still froze the viewport for
+    the whole (wrapper height − 100vh) climb to get there, every single time
+    the reader re-entered this stretch of the page. That is the part still
+    worth fixing: once the sequence has been seen once, the tall pinning
+    wrapper collapses to one ordinary screen and the sticky hold is dropped,
+    so scrolling back through here a second time just scrolls past it like any
+    other section instead of freezing again.
+  */
+  const [settled, setSettled] = useState(false);
+  const hasCompletedRef = useRef(false);
+  /** The wrapper's height the instant before it collapses — see the
+   *  compensation effect below for why this has to be captured here. */
+  const heightBeforeSettleRef = useRef(0);
+  /** Read via a ref so the scroll handler always calls the latest `onSettle`
+   *  without needing it in that effect's dependency array. */
+  const onSettleRef = useRef(onSettle);
+  onSettleRef.current = onSettle;
 
   const api = useMemo<PinProgress>(
     () => ({
@@ -80,7 +120,12 @@ const ScrollPin = ({ children, className = "", sceneClassName = "" }: ScrollPinP
     [],
   );
 
+  // Measures scroll progress while the pin is still live. Never runs again
+  // once settled — there is nothing left to measure once the wrapper has
+  // collapsed to an ordinary block with no travel budget of its own.
   useIsomorphicLayoutEffect(() => {
+    if (settled) return;
+
     const el = wrapperRef.current;
     if (!el) return;
 
@@ -99,10 +144,24 @@ const ScrollPin = ({ children, className = "", sceneClassName = "" }: ScrollPinP
       const travel = rect.height - window.innerHeight;
       const next = travel > 0 ? clamp01(-rect.top / travel) : rect.top <= 0 ? 1 : 0;
 
-      if (next === progress.current) return;
+      if (next !== progress.current) {
+        progress.current = next;
+        listeners.current.forEach((listener) => listener(next));
+      }
 
-      progress.current = next;
-      listeners.current.forEach((listener) => listener(next));
+      /*
+        This is the exact geometric moment sticky's own hold was always going
+        to run out at anyway: the wrapper's bottom edge is precisely at the
+        viewport's bottom edge, so the very next pixel of scroll starts moving
+        the scene away like any ordinary element would. Settling here releases
+        the reader at the natural end of the hold, never mid-way through it.
+      */
+      if (next >= 1 && !hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        heightBeforeSettleRef.current = el.getBoundingClientRect().height;
+        setSettled(true);
+        onSettleRef.current?.();
+      }
     };
 
     const onScroll = () => {
@@ -118,12 +177,48 @@ const ScrollPin = ({ children, className = "", sceneClassName = "" }: ScrollPinP
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, []);
+  }, [settled]);
+
+  /*
+    Collapsing the tall wrapper shortens the document by exactly the travel
+    distance the pin used to hold, and that yanks every pixel below it up by
+    that same amount the instant the shorter wrapper commits — the reader
+    would see whatever they were looking at leap up the screen. Pulling
+    scrollY back by that already-known delta, synchronously and before the
+    browser paints, is what keeps the swap invisible.
+
+    The "before" height has to come from heightBeforeSettleRef, captured back
+    in render() while the wrapper was still tall: by the time THIS effect
+    runs, `settled` is already true and the DOM already reflects the
+    collapsed wrapper, so measuring `el` here only ever sees the "after" side.
+  */
+  useIsomorphicLayoutEffect(() => {
+    if (!settled) return;
+
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const delta = heightBeforeSettleRef.current - el.getBoundingClientRect().height;
+    if (delta > 0) window.scrollBy(0, -delta);
+  }, [settled]);
 
   return (
     <PinContext.Provider value={api}>
-      <div ref={wrapperRef} className={className}>
-        <div className={"sticky top-0 " + sceneClassName}>{children}</div>
+      {/*
+        overflow-anchor: none. Browser scroll anchoring exists to solve the
+        exact same problem the effect above solves — it nudges scrollY on its
+        own the instant content above the viewport resizes — by guessing which
+        element to keep in place. The effect above does not need to guess: it
+        knows the real delta. Leaving anchoring on risks it "helping" a second
+        time on top of an already-exact correction, so this wrapper opts out
+        and leaves the correction to the one that is actually precise.
+      */}
+      <div
+        ref={wrapperRef}
+        className={(settled ? undefined : className)}
+        style={{ overflowAnchor: "none" }}
+      >
+        <div className={(settled ? "" : "sticky top-0 ") + sceneClassName}>{children}</div>
       </div>
     </PinContext.Provider>
   );

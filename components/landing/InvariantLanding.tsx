@@ -539,210 +539,232 @@ const COIN_SIZES: Record<CloudCoin["size"], { box: string; mark: string }> = {
  * the headline and the supporting line carry the meaning, and thirteen list
  * items of chain names read as noise in a screen reader.
  */
-const CurrencyCloud: FC = () => (
+const CurrencyCloud: FC = () => {
   /*
-    The pin's wrapper carries height and nothing else, so the section element —
-    the landmark and the #currencies anchor the navbar points at — sits outside
-    it. No `overflow` on this element: it is an ancestor of a sticky child.
+    Mirrors ScrollPin's own one-time `settled` flip via its `onSettle` prop —
+    this component cannot read that state directly because the anchor below
+    is a SIBLING of <ScrollPin>, not a descendant, so PinContext never reaches
+    it. Once the pin has released for good, the anchor jump target simplifies
+    to the top of the section: there is no more empty start-of-pin frame to
+    route around, because the section is just an ordinary, already-resolved
+    screen at that point. See the anchor's own comment for the pre-settle case.
   */
-  <section className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28">
-    {/*
-      THE ANCHOR IS NOT THE TOP OF THE SECTION.
+  const [settled, setSettled] = useState(false);
 
-      Jumping to the section element landed the reader at the start of the pin,
-      where the scene is legitimately empty — the two headline lines have not
-      begun resolving yet — so the nav appeared to link to a blank screen that
-      only filled in if you happened to keep scrolling.
-
-      This marker sits at the scroll offset where the sequence has finished, so
-      the jump arrives on the resolved pair. The number is derived, not guessed:
-      ScrollPin's progress is -wrapperTop / (wrapperHeight - 100vh), so landing
-      at progress p means putting the viewport top p × travel into the wrapper.
-      The second line completes at 0.88 and the pin holds to 1.0, so 0.92 is
-      just past the finish with a little of the hold to spare:
-
-        desktop  0.92 × (380vh - 100vh) = 257.6vh
-        mobile   0.92 × (320vh - 100vh) = 202.4vh
-
-      Keep these in step with the wrapper heights below and with ScrollFloat's
-      `to` value. motion-reduce pins it back to the top, where that variant
-      collapses the wrapper to one screen and there is no travel to offset into.
-    */}
-    <span
-      id="currencies"
-      className="pointer-events-none absolute left-0 top-[202.4vh] motion-reduce:top-0 sm:top-[257.6vh]"
-      aria-hidden
-    />
-    <ScrollPin
-      /*
-      The wrapper's only job is height, and its height is the animation's
-      pacing: 100vh of it is the scene itself and everything past that is the
-      hold. 380vh gives nearly three full viewports of scrolling for the two
-      headline lines to resolve in, which is what makes the sequence read as
-      slow rather than as things snapping in.
-
-      Mobile gets 320vh — the same sequence over a shorter distance, because
-      a phone's viewport is tall relative to its scroll speed and matching the
-      desktop figure there feels like the page has stopped responding.
-
-      motion-reduce collapses the whole thing to a single screen: with the
-      animation off there is nothing to scrub, and holding a reader in place
-      for two viewports of nothing is exactly the experience the media query
-      exists to prevent.
-    */
-      className="h-[320vh] motion-reduce:h-screen sm:h-[380vh]"
+  return (
     /*
-      overflow-hidden lives HERE, on the sticky scene, not on the wrapper —
-      an `overflow` other than visible on any ancestor of a sticky element
-      switches it off without warning. isolate keeps the -z-10 layers below
-      from escaping behind the page background.
+      The pin's wrapper carries height and nothing else, so the section element —
+      the landmark and the #currencies anchor the navbar points at — sits outside
+      it. No `overflow` on this element: it is an ancestor of a sticky child.
     */
-      sceneClassName="relative isolate grid h-screen place-items-center overflow-hidden"
-    >
-    {/*
-      ---- Layer 1: the drifting marks ---------------------------------
-      Inset from the scene's edges rather than pinned to them. The tiles are
-      positioned as percentages of this layer, and at full bleed the topmost
-      marks sat under the fixed navbar and the lowest ran off the bottom of a
-      short viewport.
-    */}
-    <div
-      className="pointer-events-none absolute inset-x-0 bottom-[6%] top-[11%] -z-10 sm:bottom-[5%] sm:top-[9%]"
-      aria-hidden
-    >
-      {CLOUD_COINS.map(({ label, logo, x, y, size, tilt, drift, delay, duration, desktopOnly }) => {
-        const { box, mark } = COIN_SIZES[size];
+    <section className="relative mx-auto my-8 w-[min(1200px,calc(100%-2rem))] sm:my-28">
+      {/*
+        THE ANCHOR IS NOT THE TOP OF THE SECTION — UNTIL THE PIN HAS SETTLED.
 
-        return (
-          <div
-            key={label}
-            className={
-              "absolute -translate-x-1/2 -translate-y-1/2 " +
-              (desktopOnly ? "hidden sm:block" : "block")
-            }
-            style={{ left: x, top: y }}
-          >
-            {/*
-              Two nested elements on purpose: the wrapper owns the centring
-              translate, the child owns the animation. Collapsing them would put
-              the keyframes and the -50%/-50% on the same `transform`, and the
-              animation would win — every tile would snap to its raw left/top.
-            */}
+        Jumping to the section element landed the reader at the start of the pin,
+        where the scene is legitimately empty — the two headline lines have not
+        begun resolving yet — so the nav appeared to link to a blank screen that
+        only filled in if you happened to keep scrolling.
+
+        This marker sits at the scroll offset where the sequence has finished, so
+        the jump arrives on the resolved pair. The number is derived, not guessed:
+        ScrollPin's progress is -wrapperTop / (wrapperHeight - 100vh), so landing
+        at progress p means putting the viewport top p × travel into the wrapper.
+        The second line completes at 0.88 and the pin holds to 1.0, so 0.92 is
+        just past the finish with a little of the hold to spare:
+
+          desktop  0.92 × (380vh - 100vh) = 257.6vh
+          mobile   0.92 × (320vh - 100vh) = 202.4vh
+
+        Keep these in step with the wrapper heights below and with ScrollFloat's
+        `to` value. motion-reduce pins it back to the top, where that variant
+        collapses the wrapper to one screen and there is no travel to offset into.
+
+        Once settled, none of that applies any more: ScrollPin has already
+        collapsed to a single ordinary screen with the sequence already resolved,
+        so top-0 lands the jump on exactly the same finished frame the deep
+        offset used to reach the hard way.
+      */}
+      <span
+        id="currencies"
+        className={
+          "pointer-events-none absolute left-0 " +
+          (settled ? "top-0" : "top-[202.4vh] motion-reduce:top-0 sm:top-[257.6vh]")
+        }
+        aria-hidden
+      />
+      <ScrollPin
+        onSettle={() => setSettled(true)}
+          /*
+        The wrapper's only job is height, and its height is the animation's
+        pacing: 100vh of it is the scene itself and everything past that is the
+        hold. 380vh gives nearly three full viewports of scrolling for the two
+        headline lines to resolve in, which is what makes the sequence read as
+        slow rather than as things snapping in.
+
+        Mobile gets 320vh — the same sequence over a shorter distance, because
+        a phone's viewport is tall relative to its scroll speed and matching the
+        desktop figure there feels like the page has stopped responding.
+
+        motion-reduce collapses the whole thing to a single screen: with the
+        animation off there is nothing to scrub, and holding a reader in place
+        for two viewports of nothing is exactly the experience the media query
+        exists to prevent.
+      */
+        className="h-[320vh] motion-reduce:h-screen sm:h-[380vh]"
+      /*
+        overflow-hidden lives HERE, on the sticky scene, not on the wrapper —
+        an `overflow` other than visible on any ancestor of a sticky element
+        switches it off without warning. isolate keeps the -z-10 layers below
+        from escaping behind the page background.
+      */
+        sceneClassName="relative isolate grid h-screen place-items-center overflow-hidden"
+      >
+      {/*
+        ---- Layer 1: the drifting marks ---------------------------------
+        Inset from the scene's edges rather than pinned to them. The tiles are
+        positioned as percentages of this layer, and at full bleed the topmost
+        marks sat under the fixed navbar and the lowest ran off the bottom of a
+        short viewport.
+      */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-[6%] top-[11%] -z-10 sm:bottom-[5%] sm:top-[9%]"
+        aria-hidden
+      >
+        {CLOUD_COINS.map(({ label, logo, x, y, size, tilt, drift, delay, duration, desktopOnly }) => {
+          const { box, mark } = COIN_SIZES[size];
+
+          return (
             <div
-              className="animate-coin-float"
-              style={
-                {
-                  "--coin-tilt": `${tilt}deg`,
-                  "--coin-dx": `${drift[0]}px`,
-                  "--coin-dy": `${drift[1]}px`,
-                  "--coin-delay": `${delay}s`,
-                  "--coin-dur": `${duration}s`,
-                } as CSSProperties
+              key={label}
+              className={
+                "absolute -translate-x-1/2 -translate-y-1/2 " +
+                (desktopOnly ? "hidden sm:block" : "block")
               }
+              style={{ left: x, top: y }}
             >
-              <span
-                className={
-                  "grid place-items-center border border-white/10 bg-white/[0.055] shadow-[0_20px_45px_-20px_rgba(0,0,0,0.95)] backdrop-blur-md " +
-                  box
+              {/*
+                Two nested elements on purpose: the wrapper owns the centring
+                translate, the child owns the animation. Collapsing them would put
+                the keyframes and the -50%/-50% on the same `transform`, and the
+                animation would win — every tile would snap to its raw left/top.
+              */}
+              <div
+                className="animate-coin-float"
+                style={
+                  {
+                    "--coin-tilt": `${tilt}deg`,
+                    "--coin-dx": `${drift[0]}px`,
+                    "--coin-dy": `${drift[1]}px`,
+                    "--coin-delay": `${delay}s`,
+                    "--coin-dur": `${duration}s`,
+                  } as CSSProperties
                 }
               >
-                {/* `unoptimized` for the same reason as the hero row: Next's
-                    optimizer refuses SVGs without dangerouslyAllowSVG. */}
-                <Image
-                  src={logo}
-                  alt=""
-                  width={44}
-                  height={44}
-                  unoptimized
-                  className={"object-contain " + mark}
-                />
-              </span>
+                <span
+                  className={
+                    "grid place-items-center border border-white/10 bg-white/[0.055] shadow-[0_20px_45px_-20px_rgba(0,0,0,0.95)] backdrop-blur-md " +
+                    box
+                  }
+                >
+                  {/* `unoptimized` for the same reason as the hero row: Next's
+                      optimizer refuses SVGs without dangerouslyAllowSVG. */}
+                  <Image
+                    src={logo}
+                    alt=""
+                    width={44}
+                    height={44}
+                    unoptimized
+                    className={"object-contain " + mark}
+                  />
+                </span>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-
-    {/*
-      ---- Layer 2: legibility scrim ------------------------------------
-      Same charcoal wash as the hero, and for the same reason: tiles pass close
-      to the headline and the type has to stay the brightest thing in the box.
-      Sized in percentages, so it needs its own value per breakpoint.
-
-      THE HORIZONTAL RADIUS MUST NOT EXCEED 50%. In a radial-gradient the first
-      length is the radius, not the diameter, so `ellipse 80%` puts the gradient
-      edge at 1.6× the box's half-width — the ramp is still around 35% opaque
-      where the section ends, and `overflow-hidden` slices it there. That left
-      two hard vertical seams down the sides of the mobile layout, reading as a
-      panel behind the text rather than as atmosphere. At 50% the ellipse
-      reaches zero exactly at the left and right edges, so there is nothing left
-      to clip; the stops below are re-weighted to keep the middle as dark as it
-      was. The desktop value was always under the limit, which is why the seam
-      only ever showed on phones.
-    */}
-    <div
-      className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_50%_30%_at_50%_50%,rgba(20,20,22,0.9)_0%,rgba(20,20,22,0.78)_55%,rgba(20,20,22,0.3)_82%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_28%_at_50%_50%,rgba(20,20,22,0.86)_0%,rgba(20,20,22,0.62)_48%,rgba(20,20,22,0.18)_80%,rgba(20,20,22,0)_100%)]"
-      aria-hidden
-    />
-
-    {/* ---- Layer 3: the claim ------------------------------------------ */}
-    {/* max-w-3xl, sized to the headline: at sm:text-6xl "16 tokens, 20
-        currencies" measures close to the same width as the line above it,
-        and anything narrower breaks it onto a third line, which loses the
-        two-line shape the section is built on. */}
-    {/*
-      The two headline lines resolve in reading order while the scene is pinned,
-      each taking a slice of the pin's 0–1 progress, so the sequencing is four
-      numbers rather than pieces of geometry.
-
-      The gap between the slices is deliberate — a beat where the first line
-      sits finished before the second starts, which is what separates "two
-      things arriving in order" from "one long continuous crawl". The 0.06
-      lead-in and the 0.12 tail keep the first line from being mid-animation the
-      instant the pin engages, and let the finished pair hold on screen before
-      the scene releases.
-    */}
-    <div className="relative flex max-w-3xl flex-col items-center text-center">
-      {/* Plain text, deliberately: the eyebrow is the label the two headline
-          lines complete, so it wants to be already there when they arrive
-          rather than being a third thing that animates. */}
-      <p className="text-sm font-semibold tracking-tight text-white/55 sm:text-base">
-        One route across
-      </p>
+          );
+        })}
+      </div>
 
       {/*
-        The brushed-silver clip sits on each CHARACTER now rather than on the
-        h2. `background-clip: text` is not carried into a transformed
-        descendant, so with the gradient on the h2 the moving characters paint
-        as nothing and the headline disappears for the whole animation. Per
-        character the ramp runs over one line box instead of two, which is
-        within a shade of the old two-line ramp.
+        ---- Layer 2: legibility scrim ------------------------------------
+        Same charcoal wash as the hero, and for the same reason: tiles pass close
+        to the headline and the type has to stay the brightest thing in the box.
+        Sized in percentages, so it needs its own value per breakpoint.
 
-        `pb-1` for the same reason as before: a clipped gradient crops
-        descenders flush at the box edge.
+        THE HORIZONTAL RADIUS MUST NOT EXCEED 50%. In a radial-gradient the first
+        length is the radius, not the diameter, so `ellipse 80%` puts the gradient
+        edge at 1.6× the box's half-width — the ramp is still around 35% opaque
+        where the section ends, and `overflow-hidden` slices it there. That left
+        two hard vertical seams down the sides of the mobile layout, reading as a
+        panel behind the text rather than as atmosphere. At 50% the ellipse
+        reaches zero exactly at the left and right edges, so there is nothing left
+        to clip; the stops below are re-weighted to keep the middle as dark as it
+        was. The desktop value was always under the limit, which is why the seam
+        only ever showed on phones.
       */}
-      <h2 className="mt-3 text-balance pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] sm:text-6xl">
-        <ScrollFloat
-          charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
-          from={0.06}
-          to={0.44}
-          blur={14}
-        >
-          36 assets
-        </ScrollFloat>
-        <ScrollFloat
-          charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
-          from={0.52}
-          to={0.88}
-          blur={14}
-        >
-          16 tokens, 20 currencies
-        </ScrollFloat>
-      </h2>
-      </div>
-    </ScrollPin>
-  </section>
-);
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_50%_30%_at_50%_50%,rgba(20,20,22,0.9)_0%,rgba(20,20,22,0.78)_55%,rgba(20,20,22,0.3)_82%,rgba(20,20,22,0)_100%)] sm:bg-[radial-gradient(ellipse_46%_28%_at_50%_50%,rgba(20,20,22,0.86)_0%,rgba(20,20,22,0.62)_48%,rgba(20,20,22,0.18)_80%,rgba(20,20,22,0)_100%)]"
+        aria-hidden
+      />
+
+      {/* ---- Layer 3: the claim ------------------------------------------ */}
+      {/* max-w-3xl, sized to the headline: at sm:text-6xl "16 tokens, 20
+          currencies" measures close to the same width as the line above it,
+          and anything narrower breaks it onto a third line, which loses the
+          two-line shape the section is built on. */}
+      {/*
+        The two headline lines resolve in reading order while the scene is pinned,
+        each taking a slice of the pin's 0–1 progress, so the sequencing is four
+        numbers rather than pieces of geometry.
+
+        The gap between the slices is deliberate — a beat where the first line
+        sits finished before the second starts, which is what separates "two
+        things arriving in order" from "one long continuous crawl". The 0.06
+        lead-in and the 0.12 tail keep the first line from being mid-animation the
+        instant the pin engages, and let the finished pair hold on screen before
+        the scene releases.
+      */}
+      <div className="relative flex max-w-3xl flex-col items-center text-center">
+        {/* Plain text, deliberately: the eyebrow is the label the two headline
+            lines complete, so it wants to be already there when they arrive
+            rather than being a third thing that animates. */}
+        <p className="text-sm font-semibold tracking-tight text-white/55 sm:text-base">
+          One route across
+        </p>
+
+        {/*
+          The brushed-silver clip sits on each CHARACTER now rather than on the
+          h2. `background-clip: text` is not carried into a transformed
+          descendant, so with the gradient on the h2 the moving characters paint
+          as nothing and the headline disappears for the whole animation. Per
+          character the ramp runs over one line box instead of two, which is
+          within a shade of the old two-line ramp.
+
+          `pb-1` for the same reason as before: a clipped gradient crops
+          descenders flush at the box edge.
+        */}
+        <h2 className="mt-3 text-balance pb-1 text-[2.6rem] font-bold leading-[1.05] tracking-[-0.035em] sm:text-6xl">
+          <ScrollFloat
+            charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
+            from={0.06}
+            to={0.44}
+            blur={14}
+          >
+            36 assets
+          </ScrollFloat>
+          <ScrollFloat
+            charClassName="bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text text-transparent"
+            from={0.52}
+            to={0.88}
+            blur={14}
+          >
+            16 tokens, 20 currencies
+          </ScrollFloat>
+        </h2>
+        </div>
+      </ScrollPin>
+    </section>
+  );
+};
 
 const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
   launchHref,

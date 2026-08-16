@@ -104,6 +104,16 @@ const ScrollFloat = ({
 }: ScrollFloatProps) => {
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const pin = usePinProgress();
+  /**
+   * Latches true the first time this block's pinned progress reaches its own
+   * `to` point. A pin's progress is just the reader's current scroll position,
+   * not a memory of what they have already seen — scroll back up through the
+   * currency cloud and past it again, and without this the reveal would run
+   * in reverse and then forward again right along with them. Once the reader
+   * has watched it resolve, it stays resolved for the rest of the visit;
+   * scrubbing only applies on the way to that first completion.
+   */
+  const hasCompletedRef = useRef(false);
 
   /*
     Split to words first, then characters. The reference splits straight to
@@ -162,9 +172,21 @@ const ScrollFloat = ({
       });
     };
 
-    /** Pinned: this block owns the [from, to] slice of the pin's progress. */
-    const onPin = (pinned: number) =>
-      paint(to > from ? clamp01((pinned - from) / (to - from)) : 1);
+    /**
+     * Pinned: this block owns the [from, to] slice of the pin's progress. Once
+     * that slice has ever reached 1, every later call — forward or backward —
+     * just holds the finished frame instead of re-deriving it from `pinned`.
+     */
+    const onPin = (pinned: number) => {
+      if (hasCompletedRef.current) {
+        paint(1);
+        return;
+      }
+
+      const progress = to > from ? clamp01((pinned - from) / (to - from)) : 1;
+      if (progress >= 1) hasCompletedRef.current = true;
+      paint(progress);
+    };
 
     /** Standalone: measure this block against the viewport. */
     const measure = () => {
