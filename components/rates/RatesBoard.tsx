@@ -314,7 +314,9 @@ const RatesBoard: FC = () => {
       </div>
 
       {(error || stale) && (
-        <p className="mt-3 text-center text-xs text-amber-200/70">
+        // rise-in: same reasoning as the converter's identical banner — new
+        // information arriving, not a resting part of the layout.
+        <p className="mt-3 animate-rise-in text-center text-xs text-amber-200/70">
           {error
             ? "Live feed unreachable. Showing the last rates we received."
             : "The rate provider is slow to respond; these rates may be a few minutes old."}

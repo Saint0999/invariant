@@ -71,11 +71,54 @@ interface AssetSelectProps {
   label: string;
 }
 
+/**
+ * How long the close animation runs. Matched to `.animate-popover-close` in
+ * globals.css — see the render below for why the two have to agree.
+ */
+const CLOSE_DURATION_MS = 120;
+
 const AssetSelect: FC<AssetSelectProps> = ({ value, onChange, counterpart, label }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  /*
+    Held true for one extra beat after `open` goes false, so the popover has
+    something left to animate on the way out instead of vanishing the instant
+    the trigger is clicked.
+
+    Deliberately NOT the same delayed-mount trick Collapse.tsx uses on the way
+    IN: that costs an extra render before the child exists, and the search
+    input's autofocus effect below is keyed on `open` alone — a popover that
+    is not yet in the DOM when that effect runs would silently lose the
+    focus. Opening stays perfectly synchronous with `open`; only closing gets
+    the grace period, via this separate flag.
+  */
+  const [closing, setClosing] = useState(false);
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      setClosing(false);
+      return;
+    }
+    // Nothing was ever open, so there is nothing to animate shut — true only
+    // on mount, before the reader has clicked anything.
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+
+    // Same reasoning as Collapse.tsx: with animations off there is nothing to
+    // wait for, and waiting would just delay the popover disappearing.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    setClosing(true);
+    const timer = setTimeout(() => setClosing(false), CLOSE_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  const visible = open || closing;
 
   const selected = ASSETS.find((a) => a.code === value) ?? ASSETS[0];
 
@@ -193,17 +236,29 @@ const AssetSelect: FC<AssetSelectProps> = ({ value, onChange, counterpart, label
         />
       </button>
 
-      {open && (
+      {visible && (
         /*
           z-30 keeps the popover above the swap button and the sibling row, both
           of which sit in the same stacking context. It stays under the fixed
           header (z-50) on purpose — a list that paints over the navbar reads as
           a detached overlay.
+
+          Keyframes, not a transition — same reasoning as globals.css's
+          panel-open/close pair: a transition needs the popover painted at its
+          FROM state before flipping to the TO state a frame later, which means
+          gating on requestAnimationFrame, which quietly does nothing in a
+          throttled or backgrounded tab. A keyframe runs from its own `from` the
+          moment it mounts, so there is nothing to schedule and nothing to miss.
+          `animate-popover-close` is what `closing` above buys time for.
         */
         <div
           role="listbox"
           aria-label={label}
-          className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1D1D21]/95 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl backdrop-saturate-150"
+          className={
+            "absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1D1D21]/95 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl backdrop-saturate-150 " +
+            (open ? "animate-popover-open" : "animate-popover-close")
+          }
+          style={{ animationDuration: open ? undefined : `${CLOSE_DURATION_MS}ms` }}
         >
           <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
             <Search className="h-4 w-4 shrink-0 text-white/35" />

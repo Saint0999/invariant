@@ -442,3 +442,59 @@ html, body { background: #141416; }
     transform: rotate(var(--coin-tilt, 0deg));
   }
 }
+
+/*
+  The asset picker popover (AssetSelect.tsx) — used on both sides of the
+  converter and the rates board's base picker, and until now the one
+  interactive surface in the app with no motion on it at all: it simply
+  appeared and disappeared. A small scale-and-rise on the way in, matching the
+  `.animate-page-in` curve used everywhere else a surface arrives; a quicker,
+  plainer fade on the way out, because exiting should read as faster than
+  arriving, never as the reverse tape of the same clip.
+
+  Keyframes rather than a transition, for the reason `.animate-panel-open`
+  above states at length: nothing here needs to be painted at a starting style
+  and then flipped a frame later.
+*/
+@keyframes popover-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes popover-close {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.animate-popover-open {
+  animation: popover-open 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/*
+  The duration here is a fallback matching AssetSelect's own CLOSE_DURATION_MS
+  constant; the component sets animation-duration inline, and an inline
+  longhand beats the shorthand's value from this class — same arrangement as
+  Collapse's panel-open/close pair. Keep the two numbers in step.
+*/
+.animate-popover-close {
+  animation: popover-close 120ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-popover-open,
+  .animate-popover-close {
+    animation: none;
+  }
+}

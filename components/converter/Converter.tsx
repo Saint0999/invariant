@@ -222,7 +222,10 @@ const Converter: FC = () => {
         </div>
 
         {(error || stale) && (
-          <p className="mt-3 text-xs text-amber-200/70">
+          // rise-in: this is new information landing, not part of the card's
+          // resting layout, and popping in flat read as a glitch rather than
+          // as the feed telling the reader something changed.
+          <p className="mt-3 animate-rise-in text-xs text-amber-200/70">
             {error
               ? "Live feed unreachable. Showing the last rate we received."
               : "The rate provider is slow to respond; this quote may be a few minutes old."}
