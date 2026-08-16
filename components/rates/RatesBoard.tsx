@@ -210,7 +210,7 @@ const RatesBoard: FC = () => {
       <div className="mt-4 overflow-hidden rounded-3xl border-b border-white/10 bg-[#1D1D21]/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150">
         {/* Column head. Price and 24h are sort toggles; the asset column is not,
             because assets.ts order is itself meaningful (rough market cap). */}
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-white/[0.08] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35 sm:grid-cols-[1fr_10rem_7rem] sm:px-6">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-white/[0.08] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35 sm:grid-cols-[1fr_10rem_7rem] sm:px-6">
           <span>Asset</span>
           <SortHeader
             label={`Price (${base})`}
@@ -463,7 +463,7 @@ const SortHeader: FC<{
     onClick={onClick}
     aria-pressed={active}
     className={
-      "text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors hover:text-white " +
+      "text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors hover:text-white " +
       (active ? "text-white" : "text-white/35") +
       " " +
       className

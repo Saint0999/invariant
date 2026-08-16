@@ -767,10 +767,10 @@ const ClosingCta: FC<{ launchHref: string; launchLabel: string }> = ({
         which exists: both routes are read-only price tools that ask for
         nothing, so the pitch is that there is no setup at all.
       */}
-      <h2 className="relative text-balance bg-gradient-to-b from-white to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold tracking-[-0.03em] text-transparent sm:text-5xl">
+      <h2 className="relative text-balance bg-gradient-to-b from-white via-[#E8E8EC] to-[#9A9AA4] bg-clip-text pb-1 text-4xl font-bold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-5xl">
         Start with a number, not a signup.
       </h2>
-      <p className="relative mx-auto mt-4 max-w-lg text-white/55">
+      <p className="relative mx-auto mt-4 max-w-lg text-pretty text-sm leading-relaxed text-white/55 sm:text-base">
         Pick two assets, type an amount, read the rate. 16 tokens and 20 world currencies,
         repriced every 30 seconds. Nothing to install, nothing to connect.
       </p>

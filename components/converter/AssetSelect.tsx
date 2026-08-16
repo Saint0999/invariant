@@ -129,7 +129,7 @@ const AssetSelect: FC<AssetSelectProps> = ({ value, onChange, counterpart, label
 
     return (
       <div className="py-1">
-        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+        <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
           {heading}
         </p>
         {items.map((asset) => {
@@ -157,7 +157,7 @@ const AssetSelect: FC<AssetSelectProps> = ({ value, onChange, counterpart, label
               </span>
               {isSelected && <Check className="h-4 w-4 shrink-0 text-white/70" />}
               {!isSelected && isCounterpart && (
-                <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-white/30">
+                <span className="shrink-0 text-[11px] uppercase tracking-[0.16em] text-white/30">
                   in use
                 </span>
               )}
