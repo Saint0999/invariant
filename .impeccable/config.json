@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "components/landing/InvariantLanding.tsx"
+        ],
+        "createdAt": "2026-08-13T14:45:54.688Z",
+        "reason": "Brushed-silver gradient-clip headline is the site's documented, pinned visual identity (see in-file comments at the Hero h1 and CurrencyCloud h2), reused consistently across every major heading. Refinement (typeset) preserves the committed world rather than redesigning it; not an AI-slop default."
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "components/converter/Converter.tsx"
+        ],
+        "createdAt": "2026-08-13T14:46:12.949Z",
+        "reason": "Same pinned brushed-silver gradient-clip headline as InvariantLanding.tsx — the site's documented, committed visual identity, not an AI-slop default. See prior ignore on components/landing/InvariantLanding.tsx for the same reasoning."
+      }
+    ]
+  }
+}

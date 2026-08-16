@@ -1,6 +1,31 @@
 @import "tailwindcss";
 
 /*
+  Headings are Helvetica; body copy stays on Inter (loaded in app/layout.tsx).
+  Plain Helvetica only — Helvetica Neue is deliberately NOT in this stack, so a
+  Mac that has both still renders the original cut rather than Neue's tighter,
+  more uniform one. Arial is the metric-compatible fallback for machines with
+  no Helvetica at all: it shares Helvetica's widths, so the line still lays out
+  to the same measure.
+*/
+@theme {
+  --font-heading: Helvetica, Arial, sans-serif;
+}
+
+/*
+  In `base`, NOT unlayered like the animation rules below. Every rule in this
+  file outside a layer beats any Tailwind utility regardless of specificity, so
+  an unlayered `h1, h2, ...` here would make a `font-mono` class on a heading
+  silently do nothing. Sitting in `base` keeps utilities able to override it,
+  which is how the rest of the type in this project is steered.
+*/
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+/*
   The page base colour, and it must MATCH the pages themselves (#141416).
 
   It used to be #0A0A0C, which was visible as a near-black band wherever the

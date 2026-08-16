@@ -232,7 +232,7 @@ const Converter: FC = () => {
 
       {/* ---- Quick pairs ---------------------------------------------- */}
       <div className="mt-8">
-        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white/30">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-white/30">
           Popular pairs
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
