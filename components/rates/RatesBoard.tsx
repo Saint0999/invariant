@@ -207,7 +207,13 @@ const RatesBoard: FC = () => {
       </div>
 
       {/* ---- The board -------------------------------------------------- */}
-      <div className="mt-4 overflow-hidden rounded-3xl border-b border-white/10 bg-[#1D1D21]/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150">
+      {/* mt-3, one step tighter than the mt-4 above the filter row: search and
+          "Priced in" are peer controls with room to breathe, but the filter
+          tabs and freshness readout directly describe what's about to be
+          shown, so they bind to the table rather than sit at arm's length
+          from it — the same converging cadence the converter card uses on
+          its own secondary sections (mt-8, then mt-4 tighter still). */}
+      <div className="mt-3 overflow-hidden rounded-3xl border-b border-white/10 bg-[#1D1D21]/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150">
         {/* Column head. Price and 24h are sort toggles; the asset column is not,
             because assets.ts order is itself meaningful (rough market cap). */}
         <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-white/[0.08] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35 sm:grid-cols-[1fr_10rem_7rem] sm:px-6">
